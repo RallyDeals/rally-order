@@ -1,0 +1,91 @@
+version: '3.8'
+
+services:
+  broker:
+    image: apache/kafka-native:4.0.1-rc2
+    hostname: broker
+    container_name: broker
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@broker:29093
+      KAFKA_LISTENERS: PLAINTEXT://broker:29092,CONTROLLER://broker:29093,PLAINTEXT_HOST://0.0.0.0:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    networks:
+      - rally-network
+
+  # UI for Kafka
+  kafdrop:
+    image: obsidiandynamics/kafdrop:4.0.1
+    container_name: kafdrop
+    ports:
+      - "9000:9000"
+    environment:
+      KAFKA_BROKERCONNECT: "broker:29092"
+    depends_on:
+      - broker
+    networks:
+      - rally-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: rally_postgres
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: order_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - rally-network
+
+#  order-service:
+#    build:
+#      context: ../rally-order
+#      dockerfile: Dockerfile
+#      secrets:
+#        - gh_username
+#        - gh_token
+#    container_name: order_service
+#    env_file:
+#      - .env
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_db
+#      SPRING_DATASOURCE_USERNAME: user
+#      SPRING_DATASOURCE_PASSWORD: password
+#      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:29092
+#      JWT_SECRET: ${JWT_SECRET}
+#    ports:
+#      - "8081:8081"
+#    depends_on:
+#      - postgres
+#      - broker
+#    networks:
+#      - rally-network
+
+networks:
+  rally-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+
+secrets:
+  gh_username:
+    environment: GH_USERNAME
+  gh_token:
+    environment: GITHUB_TOKEN
