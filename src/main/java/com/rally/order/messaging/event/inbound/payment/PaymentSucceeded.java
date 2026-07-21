@@ -1,0 +1,8 @@
+package com.rally.order.messaging.event.inbound.payment;
+
+import java.math.BigDecimal;
+import java.util.UUID;
+
+public record PaymentSucceeded(
+        UUID paymentId, String paymentIntentId, String orderId, BigDecimal amount) {
+}
