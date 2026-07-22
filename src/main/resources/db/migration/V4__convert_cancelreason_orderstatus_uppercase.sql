@@ -3,6 +3,9 @@ BEGIN;
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check;
 ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_cancel_reason_check;
 
+UPDATE orders SET status = UPPER(status);
+UPDATE orders SET cancel_reason = UPPER(cancel_reason) WHERE cancel_reason IS NOT NULL;
+
 ALTER TABLE orders ADD CONSTRAINT orders_status_check CHECK (status IN (
                                                                         'RESERVING',
                                                                         'PENDING_CHARGE',
