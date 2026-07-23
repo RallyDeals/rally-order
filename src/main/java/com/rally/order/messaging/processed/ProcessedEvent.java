@@ -12,7 +12,7 @@ import java.time.OffsetDateTime;
 
 @Entity
 @Getter @Setter
-@Table(name = "processes_events")
+@Table(name = "processed_events")
 public class ProcessedEvent {
     @Id
     @UuidGenerator
@@ -21,7 +21,7 @@ public class ProcessedEvent {
     @Column(length = 100, nullable = false)
     private String eventType;
     @Column(length = 100, nullable = false)
-    private String eventSourceTopic;
+    private String sourceTopic;
     @Column(nullable = false)
     private OffsetDateTime processedAt;
 }
