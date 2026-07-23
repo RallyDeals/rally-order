@@ -6,7 +6,6 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -17,12 +16,9 @@ import java.util.UUID;
 public class CheckOutOrderResponse {
     private UUID id;
     private UUID userId;
-    @Builder.Default
-    private List<OrderProduct> orderProducts = new ArrayList<>();
-    @Builder.Default
-    private OrderType orderType = OrderType.NORMAL;
-    @Builder.Default
-    private OrderStatus orderStatus = OrderStatus.PENDING_CHARGE;
+    private List<OrderProduct> orderProducts;
+    private OrderType orderType;
+    private OrderStatus status;
     private BigDecimal totalPrice;
     private OffsetDateTime createdAt;
 }
