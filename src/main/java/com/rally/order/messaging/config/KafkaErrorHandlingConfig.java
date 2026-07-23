@@ -1,4 +1,4 @@
-package com.rally.order.config.kafka;
+package com.rally.order.messaging.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
