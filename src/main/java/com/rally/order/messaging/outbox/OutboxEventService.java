@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.ObjectMapper;
 
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -16,7 +17,9 @@ public class OutboxEventService {
 
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void publish(String aggregateType, String aggregateId, String eventType, String topic, String correlationId, Object eventRecord){
+    public void publish(String aggregateType, UUID aggregateId, String eventType, String topic, UUID correlationId, Object eventRecord){
+        Objects.requireNonNull(aggregateId, "aggregateId must not be null");
+        Objects.requireNonNull(correlationId, "correlationId must not be null");
         String payload = objectMapper.writeValueAsString(eventRecord);
 
         OutboxEvent event = OutboxEvent.builder()

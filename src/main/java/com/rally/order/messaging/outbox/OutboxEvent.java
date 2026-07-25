@@ -22,19 +22,20 @@ public class OutboxEvent {
     private UUID id;
     @Column(length = 50, nullable = false)
     private String aggregateType;
-    @Column(length = 100, nullable = false)
-    private String aggregateId;
+    @Column(nullable = false)
+    private UUID aggregateId;
     @Column(length = 100, nullable = false)
     private String eventType;
     @Column(length = 100, nullable = false)
     private String topic;
     @Column
-    private String correlationId;
+    private UUID correlationId;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;
     @Enumerated(EnumType.STRING)
     @Column(length = 20, nullable = false)
+    @Builder.Default
     private OutboxEventStatus status = OutboxEventStatus.PENDING;
     @Column(nullable = false)
     private int attempts = 0;
