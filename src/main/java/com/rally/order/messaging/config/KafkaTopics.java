@@ -15,7 +15,7 @@ public final class KafkaTopics {
     public static final String ORDER_EVENTS = "order-events";
 
     // Header keys used on every message, both consumed and published.
-    public static final String HEADER_EVENT_ID = "eventId";
-    public static final String HEADER_EVENT_TYPE = "eventType";
-    public static final String HEADER_CORRELATION_ID = "correlationId";
+    public static final String HEADER_EVENT_ID = "X-Id";
+    public static final String HEADER_EVENT_TYPE = "X-Type";
+    public static final String HEADER_CORRELATION_ID = "X-Correlation-Id";
 }

@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutionException;
 @RequiredArgsConstructor
 public class OutboxRelay {
     private static final int BATCH_SIZE = 100;
+    private static final int MAX_ATTEMPTS = 3;
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxKafkaSender outboxKafkaSender;
 
@@ -29,9 +30,10 @@ public class OutboxRelay {
                 if(e instanceof InterruptedException){
                     Thread.currentThread().interrupt();
                 }
-                event.setStatus(OutboxEventStatus.FAILED);
-                event.setAttempts(event.getAttempts() + 1);
+                int attempts = event.getAttempts() + 1;
+                event.setAttempts(attempts);
                 event.setLastError(rootCauseError(e));
+                event.setStatus(attempts >= MAX_ATTEMPTS ? OutboxEventStatus.FAILED : OutboxEventStatus.PENDING);
             }
         }
     }

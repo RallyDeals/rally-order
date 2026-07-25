@@ -1,5 +1,7 @@
 package com.rally.order.messaging.outbox;
 
+import com.rally.order.messaging.config.KafkaTopics;
+import com.rally.order.messaging.support.EventHeaders;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
@@ -16,12 +18,13 @@ public class OutboxKafkaSender {
 
     public CompletableFuture<Void> send(OutboxEvent event){
         ProducerRecord<String, String> record = new ProducerRecord<>(
-                event.getTopic(), 1, event.getAggregateId(), event.getPayload());
+                event.getTopic(), event.getAggregateId().toString(), event.getPayload());
 
+        EventHeaders headers = new EventHeaders(event.getId(), event.getEventType(), event.getCorrelationId());
         record.headers()
-                .add(new RecordHeader("X-Id", event.getId().toString().getBytes(StandardCharsets.UTF_8)))
-                .add(new RecordHeader("X-Type", event.getEventType().getBytes(StandardCharsets.UTF_8)))
-                .add(new RecordHeader("X-Correlation-Id", event.getCorrelationId().getBytes(StandardCharsets.UTF_8)));
+                .add(new RecordHeader(KafkaTopics.HEADER_EVENT_ID, headers.eventId().toString().getBytes(StandardCharsets.UTF_8)))
+                .add(new RecordHeader(KafkaTopics.HEADER_EVENT_TYPE, headers.eventType().getBytes(StandardCharsets.UTF_8)))
+                .add(new RecordHeader(KafkaTopics.HEADER_CORRELATION_ID, headers.correlationId().toString().getBytes(StandardCharsets.UTF_8)));
 
         return kafkaTemplate.send(record).thenApply(result -> null);
     }
