@@ -1,7 +1,12 @@
 package com.rally.order.messaging.event.outbound.orderEvents;
 
+import com.rally.order.dto.OrderItem;
+import com.rally.order.model.CancelReason;
+import lombok.Builder;
+
 import java.util.List;
 import java.util.UUID;
 
-public record NormalOrderCancelled(UUID orderId, UUID userId, List<Object> items) {
+@Builder
+public record NormalOrderCancelled(UUID orderId, UUID userId, CancelReason cancelReason, List<OrderItem> items) {
 }
