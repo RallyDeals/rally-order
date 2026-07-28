@@ -31,7 +31,6 @@ public class NormalOrderService {
 
     public CheckOutOrderResponse checkoutOrder(UUID userId, CheckOutOrderRequest orderRequest) {
         List<UUID> productIds = orderRequest.getOrderItems().stream().map(OrderItem::getProductId).toList();
-        UUID correlationId = UUID.randomUUID();
         // Validate Order Items and retrieve them from Catalog
         CatalogLookupResponse catalogLookupResponse = lookupProducts(productIds);
         // Build order with status RESERVING
@@ -40,7 +39,7 @@ public class NormalOrderService {
         try {
             reserveProductQuantities(orderRequest.getOrderItems(), order.getId());
         } catch (Exception e) {
-            orderTransitionService.cancelOrder(order, orderRequest.getOrderItems(), reasonFrom(e), correlationId);
+            orderTransitionService.cancelOrder(order, orderRequest.getOrderItems(), reasonFrom(e));
             return orderMapper.toCheckoutOrderResponse(order);
         }
         // Update status and fire payment charge event
