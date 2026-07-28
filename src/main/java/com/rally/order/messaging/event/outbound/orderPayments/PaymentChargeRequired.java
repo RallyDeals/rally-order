@@ -6,5 +6,5 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Builder
-public record PaymentChargeRequired(UUID userId, UUID orderId, BigDecimal amount, String paymentIntentId) {
+public record PaymentChargeRequired(UUID userId, UUID orderId, BigDecimal amount, String paymentMethodId) {
 }

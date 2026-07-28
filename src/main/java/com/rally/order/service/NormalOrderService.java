@@ -44,7 +44,7 @@ public class NormalOrderService {
             return orderMapper.toCheckoutOrderResponse(order);
         }
         // Update status and fire payment charge event
-        orderTransitionService.prepareOrderForCharge(order, userId, correlationId, orderRequest.getPaymentIntentId());
+        orderTransitionService.prepareOrderForCharge(order, userId, orderRequest.getPaymentMethodId());
         // return
         return orderMapper.toCheckoutOrderResponse(order);
     }

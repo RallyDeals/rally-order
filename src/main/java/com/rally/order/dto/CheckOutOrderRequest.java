@@ -15,5 +15,5 @@ public class CheckOutOrderRequest {
     @Size(min = 1, message = "Order items must be provided")
     private List<OrderItem> orderItems;
     @NotNull
-    private String paymentIntentId;
+    private String paymentMethodId;
 }

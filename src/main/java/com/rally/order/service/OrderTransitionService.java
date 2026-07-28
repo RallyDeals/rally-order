@@ -34,7 +34,7 @@ class OrderTransitionService {
 
         BigDecimal totalPrice = orderProducts.stream().map(op -> op.getUnitPrice().multiply(BigDecimal.valueOf(op.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Order order = Order.builder().userId(userId).orderType(OrderType.NORMAL).status(OrderStatus.RESERVING).totalPrice(totalPrice).paymentIntentId(request.getPaymentIntentId()).build();
+        Order order = Order.builder().userId(userId).orderType(OrderType.NORMAL).status(OrderStatus.RESERVING).totalPrice(totalPrice).build();
 
         orderProducts.forEach(order::addOrderProduct);
         orderRepository.save(order);
@@ -60,7 +60,7 @@ class OrderTransitionService {
     }
 
     @Transactional
-    void prepareOrderForCharge(Order order, UUID userId, UUID correlationId, String paymentIntentId) {
+    void prepareOrderForCharge(Order order, UUID userId, String paymentMethodId) {
         int updated = orderRepository.updateStatusIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.PENDING_CHARGE);
         if (updated == 0)
             return;
@@ -72,7 +72,7 @@ class OrderTransitionService {
                         .userId(userId)
                         .orderId(order.getId())
                         .amount(order.getTotalPrice())
-                        .paymentIntentId(paymentIntentId)
+                        .paymentMethodId(paymentMethodId)
                         .build()
         );
     }
