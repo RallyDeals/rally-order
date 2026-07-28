@@ -28,8 +28,12 @@ public class OutboxEvent {
     private String eventType;
     @Column(length = 100, nullable = false)
     private String topic;
-    @Column
+    @Column(nullable = false)
     private UUID correlationId;
+    @Column(nullable = false)
+    private UUID causationId;
+    @Column(nullable = false)
+    private UUID traceId;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;

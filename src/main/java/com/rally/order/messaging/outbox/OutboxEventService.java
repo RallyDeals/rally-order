@@ -1,5 +1,6 @@
 package com.rally.order.messaging.outbox;
 
+import com.rally.order.messaging.support.TraceContext;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -17,9 +18,8 @@ public class OutboxEventService {
 
 
     @Transactional(propagation = Propagation.MANDATORY)
-    public void publish(String aggregateType, UUID aggregateId, String eventType, String topic, UUID correlationId, Object eventRecord){
+    public void publish(String aggregateType, UUID aggregateId, String eventType, String topic, Object eventRecord){
         Objects.requireNonNull(aggregateId, "aggregateId must not be null");
-        Objects.requireNonNull(correlationId, "correlationId must not be null");
         String payload = objectMapper.writeValueAsString(eventRecord);
 
         OutboxEvent event = OutboxEvent.builder()
@@ -28,7 +28,9 @@ public class OutboxEventService {
                 .eventType(eventType)
                 .topic(topic)
                 .payload(payload)
-                .correlationId(correlationId)
+                .correlationId(TraceContext.correlationId())
+                .causationId(TraceContext.causationId())
+                .traceId(TraceContext.traceId())
                 .status(OutboxEventStatus.PENDING)
                 .attempts(0)
                 .createdAt(java.time.OffsetDateTime.now())

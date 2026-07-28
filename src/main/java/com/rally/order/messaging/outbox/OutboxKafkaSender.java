@@ -20,11 +20,13 @@ public class OutboxKafkaSender {
         ProducerRecord<String, String> record = new ProducerRecord<>(
                 event.getTopic(), event.getAggregateId().toString(), event.getPayload());
 
-        EventHeaders headers = new EventHeaders(event.getId(), event.getEventType(), event.getCorrelationId());
+        EventHeaders headers = new EventHeaders(event.getId(), event.getEventType(), event.getCorrelationId(), event.getCausationId(), event.getTraceId());
         record.headers()
                 .add(new RecordHeader(KafkaTopics.HEADER_EVENT_ID, headers.eventId().toString().getBytes(StandardCharsets.UTF_8)))
                 .add(new RecordHeader(KafkaTopics.HEADER_EVENT_TYPE, headers.eventType().getBytes(StandardCharsets.UTF_8)))
-                .add(new RecordHeader(KafkaTopics.HEADER_CORRELATION_ID, headers.correlationId().toString().getBytes(StandardCharsets.UTF_8)));
+                .add(new RecordHeader(KafkaTopics.HEADER_CORRELATION_ID, headers.correlationId().toString().getBytes(StandardCharsets.UTF_8)))
+                .add(new RecordHeader(KafkaTopics.HEADER_CAUSATION_ID, headers.causationId().toString().getBytes(StandardCharsets.UTF_8)))
+                .add(new RecordHeader(KafkaTopics.HEADER_TRACE_ID, headers.traceId().toString().getBytes(StandardCharsets.UTF_8)));
 
         return kafkaTemplate.send(record).thenApply(result -> null);
     }

@@ -1,5 +1,6 @@
 package com.rally.order.messaging.config;
 
+import com.rally.order.messaging.support.TraceContextRecordInterceptor;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -72,11 +73,13 @@ public class KafkaConfig {
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory(
-            ConsumerFactory<String, Object> consumerFactory, DefaultErrorHandler errorHandler) {
+            ConsumerFactory<String, Object> consumerFactory, DefaultErrorHandler errorHandler,
+            TraceContextRecordInterceptor traceContextRecordInterceptor) {
         ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory);
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
         factory.setCommonErrorHandler(errorHandler);
+        factory.setRecordInterceptor(traceContextRecordInterceptor);
         return factory;
     }
 }
