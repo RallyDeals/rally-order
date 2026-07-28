@@ -42,14 +42,14 @@ class OrderTransitionService {
     }
 
     @Transactional
-    void cancelOrder(Order order, List<OrderItem> orderItems, CancelReason cancelReason, UUID correlationId) {
+    void cancelOrder(Order order, List<OrderItem> orderItems, CancelReason cancelReason) {
         int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.CANCELLED, cancelReason);
         if (updated == 0)
             return;
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_NORMAL_CANCELLED,
-                KafkaTopics.ORDER_EVENTS, correlationId,
+                KafkaTopics.ORDER_EVENTS,
                 NormalOrderCancelled.builder()
                         .orderId(order.getId())
                         .userId(order.getUserId())
@@ -67,7 +67,6 @@ class OrderTransitionService {
         order.setStatus(OrderStatus.PENDING_CHARGE);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_PAYMENT_CHARGE_REQUIRED,
                 KafkaTopics.ORDER_PAYMENTS,
-                correlationId,
                 PaymentChargeRequired.builder()
                         .userId(userId)
                         .orderId(order.getId())
