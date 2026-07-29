@@ -1,10 +1,13 @@
 package com.rally.order.messaging.config;
 
+import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
+import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.messaging.support.TraceContextRecordInterceptor;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +20,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.DefaultErrorHandler;
+import org.springframework.kafka.support.mapping.DefaultJacksonJavaTypeMapper;
+import org.springframework.kafka.support.mapping.JacksonJavaTypeMapper;
 import org.springframework.kafka.support.serializer.DeserializationException;
 import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.kafka.support.serializer.JacksonJsonDeserializer;
@@ -61,14 +66,34 @@ public class KafkaConfig {
 
     @Bean
     public ConsumerFactory<String, Object> consumerFactory() {
+        DefaultJacksonJavaTypeMapper typeMapper = createTypeMapper();
+        JacksonJsonDeserializer<Object> jsonDeserializer = new JacksonJsonDeserializer<>();
+        jsonDeserializer.setTypeMapper(typeMapper);
+        jsonDeserializer = jsonDeserializer.dontRemoveTypeHeaders();
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ErrorHandlingDeserializer.class);
         props.put(ErrorHandlingDeserializer.VALUE_DESERIALIZER_CLASS, JacksonJsonDeserializer.class);
-        props.put(JacksonJsonDeserializer.TRUSTED_PACKAGES, "com.rally.order.messaging.event");
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false);
-        return new DefaultKafkaConsumerFactory<>(props);
+
+        return new DefaultKafkaConsumerFactory<>(props, new StringDeserializer(),
+                new ErrorHandlingDeserializer<>(jsonDeserializer));
+    }
+
+    private static @NonNull DefaultJacksonJavaTypeMapper createTypeMapper() {
+        DefaultJacksonJavaTypeMapper typeMapper = new DefaultJacksonJavaTypeMapper();
+        typeMapper.setClassIdFieldName("X-Type");
+        typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.TYPE_ID);
+        typeMapper.addTrustedPackages("com.rally.order.messaging.event.inbound");
+        typeMapper.setIdClassMapping(Map.of(
+                "Payment.Charged", PaymentSucceeded.class,
+                "Payment.Voided", PaymentSucceeded.class,
+                "Payment.Captured", PaymentSucceeded.class,
+                "Payment.Authorized", PaymentSucceeded.class,
+                "Payment.Failed", PaymentFailed.class
+        ));
+        return typeMapper;
     }
 
     @Bean
