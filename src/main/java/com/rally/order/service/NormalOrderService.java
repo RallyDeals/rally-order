@@ -13,6 +13,8 @@ import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.CheckOutOrderResponse;
 import com.rally.order.dto.OrderItem;
 import com.rally.order.mapper.OrderMapper;
+import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
+import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.model.CancelReason;
 import com.rally.order.model.Order;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +50,9 @@ public class NormalOrderService {
         return orderMapper.toCheckoutOrderResponse(order);
     }
 
+    public void handlePaymentCharged(PaymentSucceeded eventPayload){
+        orderTransitionService.setOrderCharged(eventPayload);
+    }
     private CatalogLookupResponse lookupProducts(List<UUID> productIds) {
         CatalogLookupResponse response = catalogServiceClient.lookup(CatalogLookupRequest.builder().productIds(productIds).build());
         if (!response.getNotFound().isEmpty()) {

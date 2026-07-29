@@ -4,7 +4,9 @@ import com.rally.order.client.dto.CatalogLookupResponse;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.OrderItem;
 import com.rally.order.messaging.config.KafkaTopics;
+import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.messaging.event.outbound.orderEvents.NormalOrderCancelled;
+import com.rally.order.messaging.event.outbound.orderEvents.OrderCreated;
 import com.rally.order.messaging.event.outbound.orderPayments.PaymentChargeRequired;
 import com.rally.order.messaging.outbox.OutboxEventService;
 import com.rally.order.messaging.support.EventTypes;
@@ -72,6 +74,28 @@ class OrderTransitionService {
                         .orderId(order.getId())
                         .amount(order.getTotalPrice())
                         .paymentMethodId(paymentMethodId)
+                        .build()
+        );
+    }
+
+    @Transactional
+    void setOrderCharged(PaymentSucceeded eventPayload){
+        int updated = orderRepository.updateStatusIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED);
+        if(updated == 0) return;
+        Order order = orderRepository.getReferenceById(eventPayload.orderId());
+        outboxEventService.publish(
+                "Order",
+                eventPayload.orderId(),
+                EventTypes.ORDER_CREATED,
+                KafkaTopics.ORDER_EVENTS,
+                OrderCreated.builder()
+                        .orderId(eventPayload.orderId())
+                        .userId(order.getUserId())
+                        .items(order.getOrderProducts().stream().map(
+                                op -> OrderItem.builder()
+                                        .productId(op.getProductId())
+                                        .quantity(op.getQuantity())
+                                        .build()).toList())
                         .build()
         );
     }
