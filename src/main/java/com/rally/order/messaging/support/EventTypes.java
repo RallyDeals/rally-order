@@ -8,24 +8,24 @@ public class EventTypes {
     public static final String DEAL_FAILED = "deal.failed";
 
     public static final String ORDER_PAYMENT_CHARGE_REQUIRED =
-            "order.payment_charge_required";
+            "Payment.SettlementRequired.Charge";
     public static final String ORDER_PAYMENT_AUTHORIZE_REQUIRED =
-            "order.payment_authorize_required";
+            "Payment.SettlementRequired.Authorize";
     public static final String ORDER_PAYMENT_CAPTURE_REQUESTED =
-            "order.payment_capture_requested";
+            "Payment.SettlementRequired.Capture";
     public static final String ORDER_PAYMENT_VOID_REQUESTED =
-            "order.payment_void_requested";
+            "Payment.SettlementRequired.Void";
     public static final String ORDER_PAYMENT_PAYMENT_TIMEOUT =
-            "order.payment_timeout";
+            "Payment.Timeout";
 
-    public static final String PAYMENT_AUTHORIZED = "payment.authorized";
-    public static final String PAYMENT_CHARGED = "payment.charged";
-    public static final String PAYMENT_CAPTURED = "payment.captured";
-    public static final String PAYMENT_FAILED = "payment.failed";
-    public static final String PAYMENT_VOIDED = "payment.voided";
+    public static final String PAYMENT_AUTHORIZED = "Payment.Authorized";
+    public static final String PAYMENT_CHARGED = "Payment.Charged";
+    public static final String PAYMENT_CAPTURED = "Payment.Captured";
+    public static final String PAYMENT_FAILED = "Payment.Failed";
+    public static final String PAYMENT_VOIDED = "Payment.Voided";
 
-    public static final String ORDER_CREATED = "order.created";
-    public static final String ORDER_AUTHORIZED = "order.authorized";
-    public static final String ORDER_NORMAL_CANCELLED = "order.normal_order_cancelled";
-    public static final String ORDER_DEAL_CANCELLED = "order.deal_order_cancelled";
+    public static final String ORDER_CREATED = "Order.Created";
+    public static final String ORDER_AUTHORIZED = "Order.Authorized";
+    public static final String ORDER_NORMAL_CANCELLED = "Order.NormalCancelled";
+    public static final String ORDER_DEAL_CANCELLED = "Order.DealCancelled";
 }
