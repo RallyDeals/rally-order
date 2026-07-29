@@ -37,7 +37,7 @@ class OrderTransitionService {
         Order order = Order.builder().userId(userId).orderType(OrderType.NORMAL).status(OrderStatus.RESERVING).totalPrice(totalPrice).build();
 
         orderProducts.forEach(order::addOrderProduct);
-        orderRepository.save(order);
+        order = orderRepository.save(order);
         return order;
     }
 
