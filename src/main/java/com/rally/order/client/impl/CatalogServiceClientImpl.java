@@ -7,12 +7,14 @@ import com.rally.order.client.dto.CatalogLookupRequest;
 import com.rally.order.client.dto.CatalogLookupResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+@Profile("prod")
 @Component
 @RequiredArgsConstructor
 public class CatalogServiceClientImpl implements CatalogServiceClient {
