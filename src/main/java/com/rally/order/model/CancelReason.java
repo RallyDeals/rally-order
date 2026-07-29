@@ -1,0 +1,12 @@
+package com.rally.order.model;
+
+public enum CancelReason {
+    INSUFFICIENT_STOCK,
+    INVENTORY_UNREACHABLE,
+    RESERVATION_INCOMPLETE,
+    PAYMENT_DECLINED,
+    PAYMENT_TIMEOUT,
+    DEAL_FAILED,
+    PARTICIPANT_LEFT,
+    SERVER_ERROR
+}
