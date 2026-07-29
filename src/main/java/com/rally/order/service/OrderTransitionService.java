@@ -4,17 +4,14 @@ import com.rally.order.client.dto.CatalogLookupResponse;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.OrderItem;
 import com.rally.order.messaging.config.KafkaTopics;
+import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
 import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.messaging.event.outbound.orderEvents.NormalOrderCancelled;
 import com.rally.order.messaging.event.outbound.orderEvents.OrderCreated;
 import com.rally.order.messaging.event.outbound.orderPayments.PaymentChargeRequired;
 import com.rally.order.messaging.outbox.OutboxEventService;
 import com.rally.order.messaging.support.EventTypes;
-import com.rally.order.model.CancelReason;
-import com.rally.order.model.Order;
-import com.rally.order.model.OrderProduct;
-import com.rally.order.model.OrderStatus;
-import com.rally.order.model.OrderType;
+import com.rally.order.model.*;
 import com.rally.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -44,21 +41,10 @@ class OrderTransitionService {
     }
 
     @Transactional
-    void cancelOrder(Order order, List<OrderItem> orderItems, CancelReason cancelReason) {
+    void cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
         int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.CANCELLED, cancelReason);
-        if (updated == 0)
-            return;
-        order.setStatus(OrderStatus.CANCELLED);
-        order.setCancelReason(cancelReason);
-        outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_NORMAL_CANCELLED,
-                KafkaTopics.ORDER_EVENTS,
-                NormalOrderCancelled.builder()
-                        .orderId(order.getId())
-                        .userId(order.getUserId())
-                        .items(orderItems)
-                        .cancelReason(cancelReason)
-                        .build()
-        );
+        if (updated == 0) return;
+        cancelOrder(order, cancelReason);
     }
 
     @Transactional
@@ -79,9 +65,9 @@ class OrderTransitionService {
     }
 
     @Transactional
-    void setOrderCharged(PaymentSucceeded eventPayload){
-        int updated = orderRepository.updateStatusIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED);
-        if(updated == 0) return;
+    void confirmOrderForPaymentCharge(PaymentSucceeded eventPayload) {
+        int updated = orderRepository.updateStatusWithPaymentIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED, eventPayload.paymentId(), eventPayload.paymentIntentId());
+        if (updated == 0) return;
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
         outboxEventService.publish(
                 "Order",
@@ -96,6 +82,37 @@ class OrderTransitionService {
                                         .productId(op.getProductId())
                                         .quantity(op.getQuantity())
                                         .build()).toList())
+                        .build()
+        );
+    }
+
+    @Transactional
+    void cancelOrderForPaymentFailure(PaymentFailed eventPayload) {
+        Order order = orderRepository.getReferenceById(eventPayload.orderId());
+        int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, OrderStatus.CANCELLED,
+                CancelReason.PAYMENT_DECLINED, eventPayload.paymentId(), eventPayload.paymentIntentId());
+        if (updated == 0) return;
+        order.setPaymentId(eventPayload.paymentId());
+        order.setPaymentIntentId(eventPayload.paymentIntentId());
+        cancelOrder(order, CancelReason.PAYMENT_DECLINED);
+    }
+
+    private void cancelOrder(Order order, CancelReason cancelReason) {
+        List<OrderItem> orderItems = order.getOrderProducts().stream().map(
+                op -> OrderItem.builder()
+                        .productId(op.getProductId())
+                        .quantity(op.getQuantity())
+                        .build()
+        ).toList();
+        order.setStatus(OrderStatus.CANCELLED);
+        order.setCancelReason(cancelReason);
+        outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_NORMAL_CANCELLED,
+                KafkaTopics.ORDER_EVENTS,
+                NormalOrderCancelled.builder()
+                        .orderId(order.getId())
+                        .userId(order.getUserId())
+                        .items(orderItems)
+                        .cancelReason(cancelReason)
                         .build()
         );
     }

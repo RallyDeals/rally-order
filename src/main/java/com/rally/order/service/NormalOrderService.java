@@ -41,7 +41,7 @@ public class NormalOrderService {
         try {
             reserveProductQuantities(orderRequest.getOrderItems(), order.getId());
         } catch (Exception e) {
-            orderTransitionService.cancelOrder(order, orderRequest.getOrderItems(), reasonFrom(e));
+            orderTransitionService.cancelOrderForInventoryFailure(order, reasonFrom(e));
             return orderMapper.toCheckoutOrderResponse(order);
         }
         // Update status and fire payment charge event
@@ -51,8 +51,12 @@ public class NormalOrderService {
     }
 
     public void handlePaymentCharged(PaymentSucceeded eventPayload){
-        orderTransitionService.setOrderCharged(eventPayload);
+        orderTransitionService.confirmOrderForPaymentCharge(eventPayload);
     }
+    public void handlePaymentFailed(PaymentFailed eventPayload){
+        orderTransitionService.cancelOrderForPaymentFailure(eventPayload);
+    }
+
     private CatalogLookupResponse lookupProducts(List<UUID> productIds) {
         CatalogLookupResponse response = catalogServiceClient.lookup(CatalogLookupRequest.builder().productIds(productIds).build());
         if (!response.getNotFound().isEmpty()) {
