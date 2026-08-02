@@ -162,6 +162,28 @@
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
+
+            <!-- Resolves dependency jar paths (e.g. mockito-core) into properties for use below -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Declare Mockito's inline-mock-maker agent explicitly instead of self-attaching -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
