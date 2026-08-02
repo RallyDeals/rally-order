@@ -5,10 +5,7 @@ import com.rally.common.exceptions.domain.inventory.InsufficientStockException;
 import com.rally.common.exceptions.shared.ServiceUnavailableException;
 import com.rally.order.client.CatalogServiceClient;
 import com.rally.order.client.InventoryServiceClient;
-import com.rally.order.client.dto.CatalogLookupRequest;
-import com.rally.order.client.dto.CatalogLookupResponse;
-import com.rally.order.client.dto.InventoryReserveRequest;
-import com.rally.order.client.dto.InventoryReserveResponse;
+import com.rally.order.client.dto.*;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.CheckOutOrderResponse;
 import com.rally.order.dto.OrderItem;
@@ -21,7 +18,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -66,11 +65,24 @@ public class NormalOrderService {
     }
 
     private void reserveProductQuantities(List<OrderItem> orderItems, UUID orderId) {
-        for (OrderItem item : orderItems) {
-            InventoryReserveResponse reserveResponse = inventoryServiceClient.reserveInventory(InventoryReserveRequest.builder().orderId(orderId).productId(item.getProductId()).quantity(item.getQuantity()).build());
-            if (!reserveResponse.isReserved()) {
-                throw new InsufficientStockException(item.getProductId(), item.getQuantity(), reserveResponse.getAvailable());
-            }
+        InventoryReserveResponse reserveResponse = inventoryServiceClient.reserveInventory(
+                InventoryReserveRequest.builder()
+                        .orderId(orderId)
+                        .items(orderItems)
+                        .build()
+        );
+
+        Map<UUID, Integer> qtyByProduct = orderItems.stream()
+                .collect(Collectors.toMap(OrderItem::getProductId, OrderItem::getQuantity));
+        List<InsufficientStockException.Shortage> shortages = reserveResponse.getItems().stream()
+                .filter(i -> !i.isReserved())
+                .map(i -> new InsufficientStockException.Shortage(
+                        i.getProductId(),
+                        qtyByProduct.getOrDefault(i.getProductId(), 0),
+                        i.getAvailable()))
+                .toList();
+        if (!shortages.isEmpty()) {
+            throw new InsufficientStockException(shortages);
         }
     }
 
