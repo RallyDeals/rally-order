@@ -16,7 +16,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.generator.EventType;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -72,11 +74,17 @@ public class Order {
     @Column(name = "version", nullable = false)
     private Integer version;
 
+    @Generated(event = EventType.INSERT)
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private OffsetDateTime createdAt;
 
+    @Generated(event = {EventType.INSERT, EventType.UPDATE})
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
     private OffsetDateTime updatedAt;
+
+    @Generated(event = {EventType.INSERT, EventType.UPDATE})
+    @Column(name = "status_updated_at", nullable = false, insertable = false, updatable = false)
+    private OffsetDateTime statusUpdatedAt;
 
     @Builder.Default
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
