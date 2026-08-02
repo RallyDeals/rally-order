@@ -5,7 +5,10 @@ import com.rally.common.exceptions.domain.inventory.InsufficientStockException;
 import com.rally.common.exceptions.shared.ServiceUnavailableException;
 import com.rally.order.client.CatalogServiceClient;
 import com.rally.order.client.InventoryServiceClient;
-import com.rally.order.client.dto.*;
+import com.rally.order.client.dto.CatalogLookupRequest;
+import com.rally.order.client.dto.CatalogLookupResponse;
+import com.rally.order.client.dto.InventoryReserveRequest;
+import com.rally.order.client.dto.InventoryReserveResponse;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.CheckOutOrderResponse;
 import com.rally.order.dto.OrderItem;
@@ -40,20 +43,25 @@ public class NormalOrderService {
         try {
             reserveProductQuantities(orderRequest.getOrderItems(), order.getId());
         } catch (Exception e) {
-            orderTransitionService.cancelOrderForInventoryFailure(order, reasonFrom(e));
+            order = orderTransitionService.cancelOrderForInventoryFailure(order, reasonFrom(e));
             return orderMapper.toCheckoutOrderResponse(order);
         }
         // Update status and fire payment charge event
-        orderTransitionService.prepareOrderForCharge(order, userId, orderRequest.getPaymentMethodId());
+        order = orderTransitionService.prepareOrderForCharge(order, userId, orderRequest.getPaymentMethodId());
         // return
         return orderMapper.toCheckoutOrderResponse(order);
     }
 
-    public void handlePaymentCharged(PaymentSucceeded eventPayload){
+    public void handlePaymentCharged(PaymentSucceeded eventPayload) {
         orderTransitionService.confirmOrderForPaymentCharge(eventPayload);
     }
-    public void handlePaymentFailed(PaymentFailed eventPayload){
+
+    public void handlePaymentFailed(PaymentFailed eventPayload) {
         orderTransitionService.cancelOrderForPaymentFailure(eventPayload);
+    }
+
+    public void expireStuckReservation(Order order) {
+        orderTransitionService.cancelOrderForInventoryFailure(order, CancelReason.RESERVATION_INCOMPLETE);
     }
 
     private CatalogLookupResponse lookupProducts(List<UUID> productIds) {

@@ -41,17 +41,17 @@ class OrderTransitionService {
     }
 
     @Transactional
-    void cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
+    Order cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
         int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.CANCELLED, cancelReason);
-        if (updated == 0) return;
-        cancelOrder(order, cancelReason);
+        if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
+        return cancelOrder(order, cancelReason);
     }
 
     @Transactional
-    void prepareOrderForCharge(Order order, UUID userId, String paymentMethodId) {
+    Order prepareOrderForCharge(Order order, UUID userId, String paymentMethodId) {
         int updated = orderRepository.updateStatusIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.PENDING_CHARGE);
         if (updated == 0)
-            return;
+            return orderRepository.findById(order.getId()).orElse(order);
         order.setStatus(OrderStatus.PENDING_CHARGE);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_PAYMENT_CHARGE_REQUIRED,
                 KafkaTopics.ORDER_PAYMENTS,
@@ -62,6 +62,7 @@ class OrderTransitionService {
                         .paymentMethodId(paymentMethodId)
                         .build()
         );
+        return order;
     }
 
     @Transactional
@@ -97,7 +98,7 @@ class OrderTransitionService {
         cancelOrder(order, CancelReason.PAYMENT_DECLINED);
     }
 
-    private void cancelOrder(Order order, CancelReason cancelReason) {
+    private Order cancelOrder(Order order, CancelReason cancelReason) {
         List<OrderItem> orderItems = order.getOrderProducts().stream().map(
                 op -> OrderItem.builder()
                         .productId(op.getProductId())
@@ -115,5 +116,6 @@ class OrderTransitionService {
                         .cancelReason(cancelReason)
                         .build()
         );
+        return order;
     }
 }

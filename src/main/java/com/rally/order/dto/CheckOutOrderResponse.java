@@ -1,5 +1,6 @@
 package com.rally.order.dto;
 
+import com.rally.order.model.CancelReason;
 import com.rally.order.model.OrderStatus;
 import com.rally.order.model.OrderType;
 import lombok.*;
@@ -19,6 +20,7 @@ public class CheckOutOrderResponse {
     private List<OrderProduct> orderProducts;
     private OrderType orderType;
     private OrderStatus status;
+    private CancelReason cancelReason;
     private BigDecimal totalPrice;
     private OffsetDateTime createdAt;
 }
