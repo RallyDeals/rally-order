@@ -21,7 +21,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,20 +43,29 @@ public class NormalOrderService {
         try {
             reserveProductQuantities(orderRequest.getOrderItems(), order.getId());
         } catch (Exception e) {
-            orderTransitionService.cancelOrderForInventoryFailure(order, reasonFrom(e));
+            order = orderTransitionService.cancelOrderForInventoryFailure(order, reasonFrom(e));
             return orderMapper.toCheckoutOrderResponse(order);
         }
         // Update status and fire payment charge event
-        orderTransitionService.prepareOrderForCharge(order, userId, orderRequest.getPaymentMethodId());
+        order = orderTransitionService.prepareOrderForCharge(order, userId, orderRequest.getPaymentMethodId());
         // return
         return orderMapper.toCheckoutOrderResponse(order);
     }
 
-    public void handlePaymentCharged(PaymentSucceeded eventPayload){
+    public void handlePaymentCharged(PaymentSucceeded eventPayload) {
         orderTransitionService.confirmOrderForPaymentCharge(eventPayload);
     }
-    public void handlePaymentFailed(PaymentFailed eventPayload){
+
+    public void handlePaymentFailed(PaymentFailed eventPayload) {
         orderTransitionService.cancelOrderForPaymentFailure(eventPayload);
+    }
+
+    public void expireStuckReservation(Order order) {
+        orderTransitionService.cancelOrderForInventoryFailure(order, CancelReason.RESERVATION_INCOMPLETE);
+    }
+
+    public void expireStuckCharge(Order order){
+        orderTransitionService.cancelOrderForPaymentTimeout(order);
     }
 
     private CatalogLookupResponse lookupProducts(List<UUID> productIds) {
@@ -66,11 +77,24 @@ public class NormalOrderService {
     }
 
     private void reserveProductQuantities(List<OrderItem> orderItems, UUID orderId) {
-        for (OrderItem item : orderItems) {
-            InventoryReserveResponse reserveResponse = inventoryServiceClient.reserveInventory(InventoryReserveRequest.builder().orderId(orderId).productId(item.getProductId()).quantity(item.getQuantity()).build());
-            if (!reserveResponse.isReserved()) {
-                throw new InsufficientStockException(item.getProductId(), item.getQuantity(), reserveResponse.getAvailable());
-            }
+        InventoryReserveResponse reserveResponse = inventoryServiceClient.reserveInventory(
+                InventoryReserveRequest.builder()
+                        .orderId(orderId)
+                        .items(orderItems)
+                        .build()
+        );
+
+        Map<UUID, Integer> qtyByProduct = orderItems.stream()
+                .collect(Collectors.toMap(OrderItem::getProductId, OrderItem::getQuantity));
+        List<InsufficientStockException.Shortage> shortages = reserveResponse.getItems().stream()
+                .filter(i -> !i.isReserved())
+                .map(i -> new InsufficientStockException.Shortage(
+                        i.getProductId(),
+                        qtyByProduct.getOrDefault(i.getProductId(), 0),
+                        i.getAvailable()))
+                .toList();
+        if (!shortages.isEmpty()) {
+            throw new InsufficientStockException(shortages);
         }
     }
 

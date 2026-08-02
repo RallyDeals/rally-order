@@ -9,6 +9,7 @@ import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.messaging.event.outbound.orderEvents.NormalOrderCancelled;
 import com.rally.order.messaging.event.outbound.orderEvents.OrderCreated;
 import com.rally.order.messaging.event.outbound.orderPayments.PaymentChargeRequired;
+import com.rally.order.messaging.event.outbound.orderPayments.PaymentTimeout;
 import com.rally.order.messaging.outbox.OutboxEventService;
 import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.model.*;
@@ -41,17 +42,17 @@ class OrderTransitionService {
     }
 
     @Transactional
-    void cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
-        int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.CANCELLED, cancelReason);
-        if (updated == 0) return;
-        cancelOrder(order, cancelReason);
+    Order cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
+        int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, cancelReason);
+        if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
+        return cancelOrder(order, cancelReason);
     }
 
     @Transactional
-    void prepareOrderForCharge(Order order, UUID userId, String paymentMethodId) {
+    Order prepareOrderForCharge(Order order, UUID userId, String paymentMethodId) {
         int updated = orderRepository.updateStatusIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.PENDING_CHARGE);
         if (updated == 0)
-            return;
+            return orderRepository.findById(order.getId()).orElse(order);
         order.setStatus(OrderStatus.PENDING_CHARGE);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_PAYMENT_CHARGE_REQUIRED,
                 KafkaTopics.ORDER_PAYMENTS,
@@ -62,6 +63,7 @@ class OrderTransitionService {
                         .paymentMethodId(paymentMethodId)
                         .build()
         );
+        return order;
     }
 
     @Transactional
@@ -89,7 +91,7 @@ class OrderTransitionService {
     @Transactional
     void cancelOrderForPaymentFailure(PaymentFailed eventPayload) {
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
-        int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, OrderStatus.CANCELLED,
+        int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE,
                 CancelReason.PAYMENT_DECLINED, eventPayload.paymentId(), eventPayload.paymentIntentId());
         if (updated == 0) return;
         order.setPaymentId(eventPayload.paymentId());
@@ -97,7 +99,22 @@ class OrderTransitionService {
         cancelOrder(order, CancelReason.PAYMENT_DECLINED);
     }
 
-    private void cancelOrder(Order order, CancelReason cancelReason) {
+    @Transactional
+    Order cancelOrderForPaymentTimeout(Order order){
+        int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, CancelReason.PAYMENT_TIMEOUT);
+        if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
+        Order cancelled = cancelOrder(order, CancelReason.PAYMENT_TIMEOUT);
+        outboxEventService.publish(
+                "Order",
+                order.getId(),
+                EventTypes.ORDER_PAYMENT_PAYMENT_TIMEOUT,
+                KafkaTopics.ORDER_PAYMENTS,
+                PaymentTimeout.builder().orderId(order.getId()).build()
+        );
+        return cancelled;
+    }
+
+    private Order cancelOrder(Order order, CancelReason cancelReason) {
         List<OrderItem> orderItems = order.getOrderProducts().stream().map(
                 op -> OrderItem.builder()
                         .productId(op.getProductId())
@@ -115,5 +132,6 @@ class OrderTransitionService {
                         .cancelReason(cancelReason)
                         .build()
         );
+        return order;
     }
 }
