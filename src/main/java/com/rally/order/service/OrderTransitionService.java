@@ -9,6 +9,7 @@ import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.messaging.event.outbound.orderEvents.NormalOrderCancelled;
 import com.rally.order.messaging.event.outbound.orderEvents.OrderCreated;
 import com.rally.order.messaging.event.outbound.orderPayments.PaymentChargeRequired;
+import com.rally.order.messaging.event.outbound.orderPayments.PaymentTimeout;
 import com.rally.order.messaging.outbox.OutboxEventService;
 import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.model.*;
@@ -42,7 +43,7 @@ class OrderTransitionService {
 
     @Transactional
     Order cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
-        int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.CANCELLED, cancelReason);
+        int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, cancelReason);
         if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
         return cancelOrder(order, cancelReason);
     }
@@ -90,12 +91,27 @@ class OrderTransitionService {
     @Transactional
     void cancelOrderForPaymentFailure(PaymentFailed eventPayload) {
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
-        int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, OrderStatus.CANCELLED,
+        int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE,
                 CancelReason.PAYMENT_DECLINED, eventPayload.paymentId(), eventPayload.paymentIntentId());
         if (updated == 0) return;
         order.setPaymentId(eventPayload.paymentId());
         order.setPaymentIntentId(eventPayload.paymentIntentId());
         cancelOrder(order, CancelReason.PAYMENT_DECLINED);
+    }
+
+    @Transactional
+    Order cancelOrderForPaymentTimeout(Order order){
+        int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, CancelReason.PAYMENT_TIMEOUT);
+        if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
+        Order cancelled = cancelOrder(order, CancelReason.PAYMENT_TIMEOUT);
+        outboxEventService.publish(
+                "Order",
+                order.getId(),
+                EventTypes.ORDER_PAYMENT_PAYMENT_TIMEOUT,
+                KafkaTopics.ORDER_PAYMENTS,
+                PaymentTimeout.builder().orderId(order.getId()).build()
+        );
+        return cancelled;
     }
 
     private Order cancelOrder(Order order, CancelReason cancelReason) {

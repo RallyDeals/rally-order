@@ -64,6 +64,10 @@ public class NormalOrderService {
         orderTransitionService.cancelOrderForInventoryFailure(order, CancelReason.RESERVATION_INCOMPLETE);
     }
 
+    public void expireStuckCharge(Order order){
+        orderTransitionService.cancelOrderForPaymentTimeout(order);
+    }
+
     private CatalogLookupResponse lookupProducts(List<UUID> productIds) {
         CatalogLookupResponse response = catalogServiceClient.lookup(CatalogLookupRequest.builder().productIds(productIds).build());
         if (!response.getNotFound().isEmpty()) {
