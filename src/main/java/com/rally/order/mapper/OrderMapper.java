@@ -7,4 +7,6 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface OrderMapper {
     CheckOutOrderResponse toCheckoutOrderResponse(Order order);
+
+    List<OrderItem> toOrderItems(List<OrderProduct> orderProducts);
 }

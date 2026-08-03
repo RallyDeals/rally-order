@@ -33,6 +33,12 @@ public class ProcessedEventsService {
         handle(record);
     }
 
+    @KafkaListener(topics = KafkaTopics.PARTICIPATION, groupId = "order-participation-group")
+    @Transactional
+    public void onParticipantMessage(ConsumerRecord<String, Object> record) {
+        handle(record);
+    }
+
     public void handle(ConsumerRecord<String, Object> record) {
         String eventId = new String(record.headers().lastHeader(KafkaTopics.HEADER_EVENT_ID).value(), StandardCharsets.UTF_8);
         if (processedEventsRepository.existsById(eventId)){

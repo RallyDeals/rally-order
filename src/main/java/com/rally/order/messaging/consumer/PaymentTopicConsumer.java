@@ -16,8 +16,9 @@ import java.nio.charset.StandardCharsets;
 
 @Service
 @RequiredArgsConstructor
-public class PaymentTopicConsumer implements TopicConsumer{
+public class PaymentTopicConsumer implements TopicConsumer {
     private final NormalOrderService normalOrderService;
+    private final DealOrderService dealOrderService;
     private final OrderService orderService;
 
     @Override
@@ -26,7 +27,7 @@ public class PaymentTopicConsumer implements TopicConsumer{
     }
 
     @Override
-    public void onMessage(ConsumerRecord<String, Object> record){
+    public void onMessage(ConsumerRecord<String, Object> record) {
         String eventType = extractType(record);
         if (eventType == null)
             return;
@@ -34,11 +35,14 @@ public class PaymentTopicConsumer implements TopicConsumer{
         switch (eventType) {
             case EventTypes.PAYMENT_CHARGED ->
                     normalOrderService.handlePaymentCharged((PaymentSucceeded) record.value());
-            case EventTypes.PAYMENT_FAILED ->
-                    orderService.handlePaymentFailed((PaymentFailed) record.value());
+            case EventTypes.PAYMENT_AUTHORIZED ->
+                    dealOrderService.handlePaymentAuthorized((PaymentSucceeded) record.value());
+            case EventTypes.PAYMENT_VOIDED -> dealOrderService.handlePaymentVoided((PaymentSucceeded) record.value());
+            case EventTypes.PAYMENT_FAILED -> orderService.handlePaymentFailed((PaymentFailed) record.value());
             default -> System.out.println("Unhandled payment event type: " + eventType);
         }
     }
+
     private String extractType(ConsumerRecord<String, Object> record) {
         Header header = record.headers().lastHeader(KafkaTopics.HEADER_EVENT_TYPE);
         return header != null ? new String(header.value(), StandardCharsets.UTF_8) : null;
