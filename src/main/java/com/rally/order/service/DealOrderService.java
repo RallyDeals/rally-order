@@ -56,5 +56,7 @@ public class DealOrderService  {
         dealOrderTransitionService.handleFailedAuthorization(eventPayload);
     }
 
+    public void cancelStuckPendingAuthorizationOrder(Order order){
+        dealOrderTransitionService.cancelOrderForPaymentTimeout(order);
     }
 }

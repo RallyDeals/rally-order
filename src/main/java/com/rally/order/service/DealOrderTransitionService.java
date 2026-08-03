@@ -204,6 +204,20 @@ class DealOrderTransitionService {
         publishPaymentVoidRequired(order);
     }
 
+    @Transactional
+    void cancelOrderForPaymentTimeout(Order order){
+        int updated = orderRepository.updateStatusToCancelledIfCurrent(
+                order.getId(),
+                OrderStatus.PENDING_AUTHORIZATION,
+                CancelReason.PAYMENT_TIMEOUT
+        );
+        if (updated == 0)
+            return;
+        dealServiceClient.releaseSlot(order.getDealId());
+        publishDealOrderCancelled(order, CancelReason.PAYMENT_TIMEOUT);
+        publishPaymentTimeout(order);
+    }
+
     private void publishDealOrderCancelled(Order order, CancelReason cancelReason){
         outboxEventService.publish(
                 "Order",
