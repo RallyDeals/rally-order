@@ -37,6 +37,8 @@ public class PaymentTopicConsumer implements TopicConsumer {
                     normalOrderService.handlePaymentCharged((PaymentSucceeded) record.value());
             case EventTypes.PAYMENT_AUTHORIZED ->
                     dealOrderService.handlePaymentAuthorized((PaymentSucceeded) record.value());
+            case EventTypes.PAYMENT_CAPTURED ->
+                    dealOrderService.handlePaymentCaptured((PaymentSucceeded) record.value());
             case EventTypes.PAYMENT_VOIDED -> dealOrderService.handlePaymentVoided((PaymentSucceeded) record.value());
             case EventTypes.PAYMENT_FAILED -> orderService.handlePaymentFailed((PaymentFailed) record.value());
             default -> System.out.println("Unhandled payment event type: " + eventType);

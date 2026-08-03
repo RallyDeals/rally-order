@@ -118,6 +118,22 @@ class DealOrderTransitionService {
         dealServiceClient.releaseSlot(order.getDealId());
         publishPaymentVoidRequired(order);
     }
+    @Transactional
+    void handlePaymentVoided(PaymentSucceeded eventPayload){
+        int updated = orderRepository.updateStatusWithPaymentIfCurrent(
+                eventPayload.orderId(),
+                OrderStatus.PENDING_VOID,
+                OrderStatus.CANCELLED,
+                eventPayload.paymentId(),
+                eventPayload.paymentIntentId()
+        );
+        if (updated == 0) return;
+        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow();
+        if (order.getCancelReason() == CancelReason.PARTICIPANT_LEFT)
+            dealServiceClient.releaseAuthorizedSlot(order.getDealId());
+        publishDealOrderCancelled(order, order.getCancelReason());
+    }
+
     private void publishDealOrderCancelled(Order order, CancelReason cancelReason){
         outboxEventService.publish(
                 "Order",

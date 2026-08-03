@@ -24,6 +24,14 @@ public class DealOrderService  {
         dealOrderTransitionService.handleParticipantJoined(eventPayload);
     }
 
+    public void handlePaymentAuthorized(PaymentSucceeded eventPayload){
+        dealOrderTransitionService.handlePaymentAuthorized(eventPayload);
+    }
+
+    public void handlePaymentVoided(PaymentSucceeded eventPayload){
+        dealOrderTransitionService.handlePaymentVoided(eventPayload);
+    }
+
     public void handlePaymentFailed(PaymentFailed eventPayload){
 
     }
