@@ -79,6 +79,20 @@ class DealOrderTransitionService {
     }
 
     @Transactional
+    void handleParticipantLeave(ParticipantLeft eventPayload){
+        Order order = orderRepository.findOrderByDealIdAndParticipantId(eventPayload.dealId(), eventPayload.participantId());
+        if (order == null)
+            throw new OrderNotFoundException("Order not found for participant: " + eventPayload.participantId());
+        int updated = orderRepository.updateStatusToPendingVoidIfCurrent(
+                order.getId(),
+                OrderStatus.AUTHORIZED,
+                CancelReason.PARTICIPANT_LEFT
+        );
+        if (updated == 0) return;
+        publishPaymentVoidRequired(order);
+    }
+
+    @Transactional
     void handlePaymentAuthorized(PaymentSucceeded eventPayload){
         int updated = orderRepository.updateStatusWithPaymentIfCurrent(
                 eventPayload.orderId(),

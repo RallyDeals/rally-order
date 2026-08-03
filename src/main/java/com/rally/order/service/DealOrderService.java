@@ -24,6 +24,10 @@ public class DealOrderService  {
         dealOrderTransitionService.handleParticipantJoined(eventPayload);
     }
 
+    public void handleParticipationLeft(ParticipantLeft eventPayload){
+        dealOrderTransitionService.handleParticipantLeave(eventPayload);
+    }
+
     public void handlePaymentAuthorized(PaymentSucceeded eventPayload){
         dealOrderTransitionService.handlePaymentAuthorized(eventPayload);
     }
@@ -33,6 +37,8 @@ public class DealOrderService  {
     }
 
     public void handlePaymentFailed(PaymentFailed eventPayload){
+        dealOrderTransitionService.handleFailedAuthorization(eventPayload);
+    }
 
     }
 }
