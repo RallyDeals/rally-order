@@ -7,6 +7,7 @@ public enum CancelReason {
     PAYMENT_DECLINED,
     PAYMENT_TIMEOUT,
     DEAL_FAILED,
+    DEAL_RESOLVED,
     PARTICIPANT_LEFT,
     SERVER_ERROR
 }
