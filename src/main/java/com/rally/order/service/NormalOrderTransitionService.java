@@ -3,6 +3,7 @@ package com.rally.order.service;
 import com.rally.order.client.dto.CatalogLookupResponse;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.OrderItem;
+import com.rally.order.mapper.OrderMapper;
 import com.rally.order.messaging.config.KafkaTopics;
 import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
 import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
@@ -24,9 +25,10 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
-class OrderTransitionService {
+class NormalOrderTransitionService {
     private final OrderRepository orderRepository;
     private final OutboxEventService outboxEventService;
+    private final OrderMapper orderMapper;
 
     @Transactional
     Order createReservingOrder(CheckOutOrderRequest request, CatalogLookupResponse catalogLookupResponse, UUID userId) {
@@ -79,11 +81,7 @@ class OrderTransitionService {
                 OrderCreated.builder()
                         .orderId(eventPayload.orderId())
                         .userId(order.getUserId())
-                        .items(order.getOrderProducts().stream().map(
-                                op -> OrderItem.builder()
-                                        .productId(op.getProductId())
-                                        .quantity(op.getQuantity())
-                                        .build()).toList())
+                        .items(orderMapper.toOrderItems(order.getOrderProducts()))
                         .build()
         );
     }
@@ -100,10 +98,11 @@ class OrderTransitionService {
     }
 
     @Transactional
-    Order cancelOrderForPaymentTimeout(Order order){
+    void cancelOrderForPaymentTimeout(Order order){
         int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, CancelReason.PAYMENT_TIMEOUT);
-        if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
-        Order cancelled = cancelOrder(order, CancelReason.PAYMENT_TIMEOUT);
+        if (updated == 0)
+            return;
+        cancelOrder(order, CancelReason.PAYMENT_TIMEOUT);
         outboxEventService.publish(
                 "Order",
                 order.getId(),
@@ -111,16 +110,10 @@ class OrderTransitionService {
                 KafkaTopics.ORDER_PAYMENTS,
                 PaymentTimeout.builder().orderId(order.getId()).build()
         );
-        return cancelled;
     }
 
     private Order cancelOrder(Order order, CancelReason cancelReason) {
-        List<OrderItem> orderItems = order.getOrderProducts().stream().map(
-                op -> OrderItem.builder()
-                        .productId(op.getProductId())
-                        .quantity(op.getQuantity())
-                        .build()
-        ).toList();
+        List<OrderItem> orderItems = orderMapper.toOrderItems(order.getOrderProducts());
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_NORMAL_CANCELLED,

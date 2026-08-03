@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class NormalOrderService {
     private final CatalogServiceClient catalogServiceClient;
     private final InventoryServiceClient inventoryServiceClient;
-    private final OrderTransitionService orderTransitionService;
+    private final NormalOrderTransitionService orderTransitionService;
     private final OrderMapper orderMapper;
 
     public CheckOutOrderResponse checkoutOrder(UUID userId, CheckOutOrderRequest orderRequest) {
