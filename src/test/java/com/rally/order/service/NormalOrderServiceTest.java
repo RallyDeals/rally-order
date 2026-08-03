@@ -49,7 +49,7 @@ class NormalOrderServiceTest {
     @Mock
     private InventoryServiceClient inventoryServiceClient;
     @Mock
-    private OrderTransitionService orderTransitionService;
+    private NormalOrderTransitionService orderTransitionService;
     @Mock
     private OrderMapper orderMapper;
 

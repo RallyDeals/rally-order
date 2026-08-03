@@ -1,11 +1,11 @@
 package com.rally.order.messaging.support;
 
 public class EventTypes {
-    public static final String PARTICIPANT_JOINED = "participant.joined";
-    public static final String PARTICIPANT_LEFT = "participant.left";
+    public static final String PARTICIPANT_JOINED = "Participant.Joined";
+    public static final String PARTICIPANT_LEFT = "Participant.Left";
 
-    public static final String DEAL_SUCCEEDED = "deal.succeeded";
-    public static final String DEAL_FAILED = "deal.failed";
+    public static final String DEAL_SUCCEEDED = "Deal.Succeeded";
+    public static final String DEAL_FAILED = "Deal.Failed";
 
     public static final String ORDER_PAYMENT_CHARGE_REQUIRED =
             "Payment.SettlementRequired.Charge";

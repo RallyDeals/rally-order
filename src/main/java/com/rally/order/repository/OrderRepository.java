@@ -32,7 +32,16 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             "WHERE o.id = :orderId AND o.status = :oldStatus")
     int updateStatusWithPaymentIfCurrent(UUID orderId, OrderStatus oldStatus, OrderStatus newStatus, UUID paymentId, String paymentIntentId);
 
+    @Modifying
+    @Query("UPDATE Order o SET o.status = OrderStatus.PENDING_VOID, o.cancelReason = :cancelReason " +
+            "WHERE o.id = :orderId AND o.status = :oldStatus")
+    int updateStatusToPendingVoidIfCurrent(UUID orderId, OrderStatus oldStatus, CancelReason cancelReason);
+
     @Query(value = "SELECT * FROM orders WHERE status = :status AND status_updated_at < :threshold " +
             "ORDER BY status_updated_at LIMIT :limit FOR UPDATE SKIP LOCKED", nativeQuery = true)
     List<Order> lockStaleOrders(String status, Instant threshold, int limit);
+
+    List<Order> findOrdersByDealIdAndStatus(UUID dealId, OrderStatus status);
+
+    Order findOrderByDealIdAndParticipantId(UUID dealId, UUID participantId);
 }
