@@ -194,6 +194,16 @@ class DealOrderTransitionService {
     }
 
     @Transactional
+    void handleDealFailed(Order order){
+        int updated = orderRepository.updateStatusToPendingVoidIfCurrent(
+                order.getId(),
+                OrderStatus.AUTHORIZED,
+                CancelReason.DEAL_FAILED
+        );
+        if (updated == 0) return;
+        publishPaymentVoidRequired(order);
+    }
+
     private void publishDealOrderCancelled(Order order, CancelReason cancelReason){
         outboxEventService.publish(
                 "Order",

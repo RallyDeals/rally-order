@@ -34,6 +34,12 @@ public class DealOrderService  {
             dealOrderTransitionService.handleDealSucceeded(order);
     }
 
+    public void handleDealFailed(DealFailed eventPayload){
+        List<Order> orders = orderRepository.findOrdersByDealIdAndStatus(eventPayload.dealId(), OrderStatus.AUTHORIZED);
+        for(Order order : orders)
+            dealOrderTransitionService.handleDealFailed(order);
+    }
+
     public void handlePaymentAuthorized(PaymentSucceeded eventPayload){
         dealOrderTransitionService.handlePaymentAuthorized(eventPayload);
     }

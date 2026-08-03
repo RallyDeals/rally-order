@@ -29,6 +29,7 @@ public class DealTopicConsumer implements TopicConsumer{
             return;
         switch(eventType){
             case EventTypes.DEAL_SUCCEEDED -> dealOrderService.handleDealSucceeded((DealSucceeded) record.value());
+            case EventTypes.DEAL_FAILED -> dealOrderService.handleDealFailed((DealFailed) record.value());
             default -> System.out.println("Unhandled deal event type: " + eventType);
         }
     }
