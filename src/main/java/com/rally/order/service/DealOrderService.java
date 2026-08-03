@@ -38,6 +38,10 @@ public class DealOrderService  {
         dealOrderTransitionService.handlePaymentAuthorized(eventPayload);
     }
 
+    public void handlePaymentCaptured(PaymentSucceeded eventPayload){
+        dealOrderTransitionService.handlePaymentCaptured(eventPayload);
+    }
+
     public void handlePaymentVoided(PaymentSucceeded eventPayload){
         dealOrderTransitionService.handlePaymentVoided(eventPayload);
     }
