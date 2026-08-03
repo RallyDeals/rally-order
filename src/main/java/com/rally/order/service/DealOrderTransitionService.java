@@ -132,6 +132,31 @@ class DealOrderTransitionService {
         dealServiceClient.releaseSlot(order.getDealId());
         publishPaymentVoidRequired(order);
     }
+
+    @Transactional
+    void handlePaymentCaptured(PaymentSucceeded eventPayload){
+        int updated = orderRepository.updateStatusWithPaymentIfCurrent(
+                eventPayload.orderId(),
+                OrderStatus.PENDING_CAPTURE,
+                OrderStatus.CONFIRMED,
+                eventPayload.paymentId(),
+                eventPayload.paymentIntentId()
+        );
+        if (updated == 0) return;
+        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow();
+        outboxEventService.publish(
+                "Order",
+                eventPayload.orderId(),
+                EventTypes.ORDER_CREATED,
+                KafkaTopics.ORDER_EVENTS,
+                OrderCreated.builder()
+                        .orderId(eventPayload.orderId())
+                        .userId(order.getUserId())
+                        .items(orderMapper.toOrderItems(order.getOrderProducts()))
+                        .build()
+        );
+    }
+
     @Transactional
     void handlePaymentVoided(PaymentSucceeded eventPayload){
         int updated = orderRepository.updateStatusWithPaymentIfCurrent(
@@ -148,6 +173,27 @@ class DealOrderTransitionService {
         publishDealOrderCancelled(order, order.getCancelReason());
     }
 
+    @Transactional
+    void handleDealSucceeded(Order order){
+        int updated = orderRepository.updateStatusIfCurrent(
+                order.getId(),
+                OrderStatus.AUTHORIZED,
+                OrderStatus.PENDING_CAPTURE
+        );
+        if (updated == 0) return;
+        outboxEventService.publish(
+                "Order",
+                order.getId(),
+                EventTypes.ORDER_PAYMENT_CAPTURE_REQUESTED,
+                KafkaTopics.ORDER_PAYMENTS,
+                PaymentCaptureRequired.builder()
+                        .orderId(order.getId())
+                        .paymentId(order.getPaymentId())
+                        .build()
+        );
+    }
+
+    @Transactional
     private void publishDealOrderCancelled(Order order, CancelReason cancelReason){
         outboxEventService.publish(
                 "Order",
@@ -173,6 +219,18 @@ class DealOrderTransitionService {
                 PaymentVoidRequired.builder()
                         .orderId(order.getId())
                         .paymentId(order.getPaymentId())
+                        .build()
+        );
+    }
+
+    private void publishPaymentTimeout(Order order){
+        outboxEventService.publish(
+                "Order",
+                order.getId(),
+                EventTypes.ORDER_PAYMENT_PAYMENT_TIMEOUT,
+                KafkaTopics.ORDER_PAYMENTS,
+                PaymentTimeout.builder()
+                        .orderId(order.getId())
                         .build()
         );
     }

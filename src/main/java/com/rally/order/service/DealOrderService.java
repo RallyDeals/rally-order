@@ -28,6 +28,12 @@ public class DealOrderService  {
         dealOrderTransitionService.handleParticipantLeave(eventPayload);
     }
 
+    public void handleDealSucceeded(DealSucceeded eventPayload){
+        List<Order> orders = orderRepository.findOrdersByDealIdAndStatus(eventPayload.dealId(), OrderStatus.AUTHORIZED);
+        for(Order order : orders)
+            dealOrderTransitionService.handleDealSucceeded(order);
+    }
+
     public void handlePaymentAuthorized(PaymentSucceeded eventPayload){
         dealOrderTransitionService.handlePaymentAuthorized(eventPayload);
     }
