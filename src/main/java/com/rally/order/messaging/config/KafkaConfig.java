@@ -1,5 +1,9 @@
 package com.rally.order.messaging.config;
 
+import com.rally.order.messaging.event.inbound.deal.DealFailed;
+import com.rally.order.messaging.event.inbound.deal.DealSucceeded;
+import com.rally.order.messaging.event.inbound.participation.ParticipantJoined;
+import com.rally.order.messaging.event.inbound.participation.ParticipantLeft;
 import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
 import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.messaging.support.TraceContextRecordInterceptor;
@@ -91,7 +95,11 @@ public class KafkaConfig {
                 "Payment.Voided", PaymentSucceeded.class,
                 "Payment.Captured", PaymentSucceeded.class,
                 "Payment.Authorized", PaymentSucceeded.class,
-                "Payment.Failed", PaymentFailed.class
+                "Payment.Failed", PaymentFailed.class,
+                "Participant.Joined", ParticipantJoined.class,
+                "Participant.Left", ParticipantLeft.class,
+                "Deal.Succeeded", DealSucceeded.class,
+                "Deal.Failed", DealFailed.class
         ));
         return typeMapper;
     }
