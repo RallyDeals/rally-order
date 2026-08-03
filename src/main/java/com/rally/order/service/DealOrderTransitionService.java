@@ -205,6 +205,25 @@ class DealOrderTransitionService {
     }
 
     @Transactional
+    void republishCapture(Order order){
+        outboxEventService.publish(
+                "Order",
+                order.getId(),
+                EventTypes.ORDER_PAYMENT_CAPTURE_REQUESTED,
+                KafkaTopics.ORDER_PAYMENTS,
+                PaymentCaptureRequired.builder()
+                        .orderId(order.getId())
+                        .paymentId(order.getPaymentId())
+                        .build()
+        );
+    }
+
+    @Transactional
+    void republishVoid(Order order){
+        publishPaymentVoidRequired(order);
+    }
+
+    @Transactional
     void cancelOrderForPaymentTimeout(Order order){
         int updated = orderRepository.updateStatusToCancelledIfCurrent(
                 order.getId(),

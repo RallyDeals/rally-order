@@ -59,4 +59,12 @@ public class DealOrderService  {
     public void cancelStuckPendingAuthorizationOrder(Order order){
         dealOrderTransitionService.cancelOrderForPaymentTimeout(order);
     }
+
+    public void republishStaleCapture(Order order){
+        dealOrderTransitionService.republishCapture(order);
+    }
+
+    public void republishStaleVoid(Order order){
+        dealOrderTransitionService.republishVoid(order);
+    }
 }
