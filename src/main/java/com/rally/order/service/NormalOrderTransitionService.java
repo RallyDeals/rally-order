@@ -1,6 +1,7 @@
 package com.rally.order.service;
 
 import com.rally.order.client.dto.CatalogLookupResponse;
+import com.rally.order.client.dto.CatalogProduct;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.OrderItem;
 import com.rally.order.mapper.OrderMapper;
@@ -32,7 +33,16 @@ class NormalOrderTransitionService {
 
     @Transactional
     Order createReservingOrder(CheckOutOrderRequest request, CatalogLookupResponse catalogLookupResponse, UUID userId) {
-        List<OrderProduct> orderProducts = request.getOrderItems().stream().map(item -> OrderProduct.builder().productId(item.getProductId()).quantity(item.getQuantity()).unitPrice(catalogLookupResponse.getFound().get(item.getProductId())).build()).toList();
+        List<OrderProduct> orderProducts = request.getOrderItems().stream().map(item -> {
+            CatalogProduct catalogProduct = catalogLookupResponse.getFound().get(item.getProductId());
+            return OrderProduct.builder()
+                    .productId(item.getProductId())
+                    .quantity(item.getQuantity())
+                    .unitPrice(catalogProduct.getPrice())
+                    .productName(catalogProduct.getName())
+                    .productImageUrl(catalogProduct.getImageUrl())
+                    .build();
+        }).toList();
 
         BigDecimal totalPrice = orderProducts.stream().map(op -> op.getUnitPrice().multiply(BigDecimal.valueOf(op.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
 
