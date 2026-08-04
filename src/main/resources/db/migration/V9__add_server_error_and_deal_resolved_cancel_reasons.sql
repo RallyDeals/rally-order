@@ -1,0 +1,17 @@
+BEGIN;
+
+ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_cancel_reason_check;
+
+ALTER TABLE orders ADD CONSTRAINT orders_cancel_reason_check CHECK (cancel_reason IN (
+    'INSUFFICIENT_STOCK',
+    'INVENTORY_UNREACHABLE',
+    'RESERVATION_INCOMPLETE',
+    'PAYMENT_DECLINED',
+    'PAYMENT_TIMEOUT',
+    'DEAL_FAILED',
+    'DEAL_RESOLVED',
+    'PARTICIPANT_LEFT',
+    'SERVER_ERROR'
+));
+
+COMMIT;

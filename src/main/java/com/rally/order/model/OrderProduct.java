@@ -49,6 +49,12 @@ public class OrderProduct {
     @Column(name = "unit_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal unitPrice;
 
+    @Column(name = "product_name")
+    private String productName;
+
+    @Column(name = "product_image_url")
+    private String productImageUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private OffsetDateTime createdAt;
 }
