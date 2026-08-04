@@ -102,7 +102,9 @@ class DealOrderTransitionService {
                 eventPayload.paymentIntentId()
         );
         if(updated == 0) return;
-        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow();
+        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
+                () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
+        );
 
         boolean slotClaimed = dealServiceClient.authorizeSlot(order.getDealId());
         if (!slotClaimed) {
@@ -143,7 +145,9 @@ class DealOrderTransitionService {
                 eventPayload.paymentIntentId()
         );
         if (updated == 0) return;
-        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow();
+        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
+                () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
+        );
         outboxEventService.publish(
                 "Order",
                 eventPayload.orderId(),
@@ -167,7 +171,9 @@ class DealOrderTransitionService {
                 eventPayload.paymentIntentId()
         );
         if (updated == 0) return;
-        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow();
+        Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
+                () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
+        );
         if (order.getCancelReason() == CancelReason.PARTICIPANT_LEFT)
             dealServiceClient.releaseAuthorizedSlot(order.getDealId());
         publishDealOrderCancelled(order, order.getCancelReason());
