@@ -6,6 +6,7 @@ import com.rally.order.client.CatalogServiceClient;
 import com.rally.order.client.InventoryServiceClient;
 import com.rally.order.client.dto.CatalogLookupRequest;
 import com.rally.order.client.dto.CatalogLookupResponse;
+import com.rally.order.client.dto.CatalogProduct;
 import com.rally.order.client.dto.InventoryReserveItem;
 import com.rally.order.client.dto.InventoryReserveRequest;
 import com.rally.order.client.dto.InventoryReserveResponse;
@@ -74,7 +75,7 @@ class NormalOrderServiceTest {
                 item(productId2, 1)
         );
         CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, BigDecimal.TEN, productId2, BigDecimal.valueOf(20)))
+                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN), productId2, catalogProduct(productId2, BigDecimal.valueOf(20))))
                 .notFound(List.of())
                 .build();
         when(catalogServiceClient.lookup(any(CatalogLookupRequest.class))).thenReturn(catalogResponse);
@@ -188,7 +189,7 @@ class NormalOrderServiceTest {
     void checkoutOrder_whenInventoryServiceUnavailable_cancelsOrderWithInventoryUnreachableReason() {
         CheckOutOrderRequest request = checkoutRequest(item(productId1, 1));
         CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, BigDecimal.TEN))
+                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN)))
                 .notFound(List.of())
                 .build();
         when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
@@ -228,7 +229,7 @@ class NormalOrderServiceTest {
     void checkoutOrder_whenInventoryServiceThrowsUnexpectedException_cancelsOrderWithServerErrorReason() {
         CheckOutOrderRequest request = checkoutRequest(item(productId1, 1));
         CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, BigDecimal.TEN))
+                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN)))
                 .notFound(List.of())
                 .build();
         when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
@@ -268,7 +269,7 @@ class NormalOrderServiceTest {
     void checkoutOrder_whenStockInsufficient_cancelsOrderWithInsufficientStockReason() {
         CheckOutOrderRequest request = checkoutRequest(item(productId1, 5));
         CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, BigDecimal.TEN))
+                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN)))
                 .notFound(List.of())
                 .build();
         when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
@@ -314,7 +315,7 @@ class NormalOrderServiceTest {
                 item(productId2, 5)
         );
         CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, BigDecimal.TEN, productId2, BigDecimal.valueOf(20)))
+                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN), productId2, catalogProduct(productId2, BigDecimal.valueOf(20))))
                 .notFound(List.of())
                 .build();
         when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
@@ -363,5 +364,9 @@ class NormalOrderServiceTest {
 
     private static OrderItem item(UUID productId, int quantity) {
         return OrderItem.builder().productId(productId).quantity(quantity).build();
+    }
+
+    private static CatalogProduct catalogProduct(UUID productId, BigDecimal price) {
+        return CatalogProduct.builder().productId(productId).name("Product " + productId).imageUrl("http://img/" + productId).price(price).build();
     }
 }

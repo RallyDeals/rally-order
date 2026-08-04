@@ -4,6 +4,7 @@ import com.rally.common.exceptions.shared.ServiceUnavailableException;
 import com.rally.order.client.CatalogServiceClient;
 import com.rally.order.client.dto.CatalogLookupRequest;
 import com.rally.order.client.dto.CatalogLookupResponse;
+import com.rally.order.client.dto.CatalogProduct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
@@ -35,14 +36,19 @@ public class CatalogServiceFakeClientImpl implements CatalogServiceClient {
             throw new ServiceUnavailableException("Catalog service is unavailable");
         }
 
-        HashMap<UUID, BigDecimal> found = new HashMap<>();
+        HashMap<UUID, CatalogProduct> found = new HashMap<>();
         ArrayList<UUID> notFound = new ArrayList<>();
 
         request.getProductIds().forEach(productId -> {
             if (productId.equals(NOT_FOUND_PRODUCT_ID)) {
                 notFound.add(productId);
             } else {
-                found.put(productId, BigDecimal.valueOf(150.0));
+                found.put(productId, CatalogProduct.builder()
+                        .productId(productId)
+                        .name("Fake Product " + productId)
+                        .imageUrl("https://picsum.photos/seed/" + productId + "/200")
+                        .price(BigDecimal.valueOf(150.0))
+                        .build());
             }
         });
 
