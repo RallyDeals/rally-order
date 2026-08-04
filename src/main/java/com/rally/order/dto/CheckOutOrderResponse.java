@@ -17,7 +17,7 @@ import java.util.UUID;
 public class CheckOutOrderResponse {
     private UUID id;
     private UUID userId;
-    private List<OrderProduct> orderProducts;
+    private List<OrderProductResponse> orderProducts;
     private OrderType orderType;
     private OrderStatus status;
     private CancelReason cancelReason;
