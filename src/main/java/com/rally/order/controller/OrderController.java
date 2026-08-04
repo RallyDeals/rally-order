@@ -1,18 +1,16 @@
 package com.rally.order.controller;
 
-import com.rally.order.dto.BriefOrderResponse;
+import com.rally.order.dto.BriefOrderPageResponse;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.CheckOutOrderResponse;
 import com.rally.order.dto.DetailedOrderResponse;
 import com.rally.order.service.NormalOrderService;
 import com.rally.order.service.OrderService;
 import jakarta.validation.Valid;
-import jakarta.websocket.server.PathParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -29,8 +27,13 @@ public class OrderController {
     }
 
     @GetMapping("/orders/my")
-    public ResponseEntity<List<BriefOrderResponse>> getMyOrders(@RequestHeader("X-User-Id") UUID userId){
-        return ResponseEntity.status(200).body(this.orderService.getMyOrders(userId));
+    public ResponseEntity<BriefOrderPageResponse> getMyOrders(
+            @RequestHeader("X-User-Id") UUID userId,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String orderType,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit){
+        return ResponseEntity.status(200).body(this.orderService.getMyOrders(userId, status, orderType, page, limit));
     }
 
     @GetMapping("/orders/my/{id}")
