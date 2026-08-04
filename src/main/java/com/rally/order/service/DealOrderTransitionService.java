@@ -2,6 +2,7 @@ package com.rally.order.service;
 
 import com.rally.common.exceptions.domain.order.OrderNotFoundException;
 import com.rally.order.client.DealServiceClient;
+import com.rally.order.client.dto.CatalogProduct;
 import com.rally.order.mapper.OrderMapper;
 import com.rally.order.messaging.config.KafkaTopics;
 import com.rally.order.messaging.event.inbound.participation.ParticipantJoined;
@@ -30,7 +31,7 @@ class DealOrderTransitionService {
     private final OrderMapper orderMapper;
 
     @Transactional
-    void handleParticipantJoined(ParticipantJoined eventPayload){
+    void handleParticipantJoined(ParticipantJoined eventPayload, CatalogProduct catalogProduct){
         Order order = Order.builder()
                 .userId(eventPayload.userId())
                 .participantId(eventPayload.participantId())
@@ -44,6 +45,8 @@ class DealOrderTransitionService {
                 .productId(eventPayload.productId())
                 .quantity(1)
                 .unitPrice(eventPayload.price())
+                .productName(catalogProduct != null ? catalogProduct.getName() : null)
+                .productImageUrl(catalogProduct != null ? catalogProduct.getImageUrl() : null)
                 .build();
         order.addOrderProduct(product);
         order = orderRepository.save(order);
