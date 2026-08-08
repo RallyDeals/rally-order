@@ -26,14 +26,14 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     int updateStatusIfCurrent(UUID orderId, OrderStatus oldStatus, OrderStatus newStatus);
 
     @Modifying
-    @Query("UPDATE Order o SET o.status = OrderStatus.CANCELLED, o.cancelReason = :cancelReason, o.paymentId = :paymentId, o.paymentIntentId = :paymentIntentId " +
+    @Query("UPDATE Order o SET o.status = OrderStatus.CANCELLED, o.cancelReason = :cancelReason, o.paymentId = :paymentId " +
             "WHERE o.id = :orderId AND o.status = :oldStatus")
-    int updateStatusToCancelledWithPaymentIfCurrent(UUID orderId, OrderStatus oldStatus, CancelReason cancelReason, UUID paymentId, String paymentIntentId);
+    int updateStatusToCancelledWithPaymentIfCurrent(UUID orderId, OrderStatus oldStatus, CancelReason cancelReason, UUID paymentId);
 
     @Modifying
-    @Query("UPDATE Order o SET o.status = :newStatus, o.paymentId = :paymentId, o.paymentIntentId = :paymentIntentId " +
+    @Query("UPDATE Order o SET o.status = :newStatus, o.paymentId = :paymentId " +
             "WHERE o.id = :orderId AND o.status = :oldStatus")
-    int updateStatusWithPaymentIfCurrent(UUID orderId, OrderStatus oldStatus, OrderStatus newStatus, UUID paymentId, String paymentIntentId);
+    int updateStatusWithPaymentIfCurrent(UUID orderId, OrderStatus oldStatus, OrderStatus newStatus, UUID paymentId);
 
     @Modifying
     @Query("UPDATE Order o SET o.status = OrderStatus.PENDING_VOID, o.cancelReason = :cancelReason " +

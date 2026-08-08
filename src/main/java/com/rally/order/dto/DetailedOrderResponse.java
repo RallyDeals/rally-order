@@ -27,7 +27,10 @@ public class DetailedOrderResponse {
     private CancelReason cancelReason;
     private BigDecimal totalPrice;
     private UUID paymentId;
-    private String paymentIntentId;
+    private String cardLast4;
+    private String cardBrand;
+    private String cardExpMonth;
+    private String cardExpYear;
     private List<OrderProductResponse> orderProducts;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
