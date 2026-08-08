@@ -19,4 +19,6 @@ public class CheckOutOrderRequest {
     private List<OrderItem> orderItems;
     @NotNull(message = "Payment method id must be provided")
     private String paymentMethodId;
+    @NotNull(message = "Address must be provided")
+    private String address;
 }
