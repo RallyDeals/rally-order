@@ -29,8 +29,8 @@ public class DetailedOrderResponse {
     private UUID paymentId;
     private String cardLast4;
     private String cardBrand;
-    private Short cardExpMonth;
-    private Short cardExpYear;
+    private String cardExpMonth;
+    private String cardExpYear;
     private List<OrderProductResponse> orderProducts;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;

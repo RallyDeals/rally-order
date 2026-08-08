@@ -69,11 +69,11 @@ public class Order {
     @Column(name = "card_brand", length = 20)
     private String cardBrand;
 
-    @Column(name = "card_exp_month")
-    private Short cardExpMonth;
+    @Column(name = "card_exp_month", length = 2)
+    private String cardExpMonth;
 
-    @Column(name = "card_exp_year")
-    private Short cardExpYear;
+    @Column(name = "card_exp_year", length = 4)
+    private String cardExpYear;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "cancel_reason", length = 30)

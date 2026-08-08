@@ -1,7 +1,9 @@
 package com.rally.order.service;
 
+import com.rally.order.client.PaymentServiceClient;
 import com.rally.order.client.dto.CatalogLookupResponse;
 import com.rally.order.client.dto.CatalogProduct;
+import com.rally.order.client.dto.PaymentMethodDetails;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.OrderItem;
 import com.rally.order.mapper.OrderMapper;
@@ -28,6 +30,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 class NormalOrderTransitionService {
     private final OrderRepository orderRepository;
+    private final PaymentServiceClient paymentServiceClient;
     private final OutboxEventService outboxEventService;
     private final OrderMapper orderMapper;
 
@@ -46,7 +49,14 @@ class NormalOrderTransitionService {
 
         BigDecimal totalPrice = orderProducts.stream().map(op -> op.getUnitPrice().multiply(BigDecimal.valueOf(op.getQuantity()))).reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Order order = Order.builder().userId(userId).orderType(OrderType.NORMAL).status(OrderStatus.RESERVING).totalPrice(totalPrice).build();
+        PaymentMethodDetails cardDetails = paymentServiceClient.getPaymentMethodDetails(userId, request.getPaymentMethodId());
+
+        Order order = Order.builder().userId(userId).orderType(OrderType.NORMAL).status(OrderStatus.RESERVING).totalPrice(totalPrice)
+                .cardLast4(cardDetails.getCardLast4())
+                .cardBrand(cardDetails.getCardBrand())
+                .cardExpMonth(cardDetails.getCardExpMonth())
+                .cardExpYear(cardDetails.getCardExpYear())
+                .build();
 
         orderProducts.forEach(order::addOrderProduct);
         order = orderRepository.save(order);

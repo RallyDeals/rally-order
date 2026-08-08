@@ -2,7 +2,9 @@ package com.rally.order.service;
 
 import com.rally.common.exceptions.domain.order.OrderNotFoundException;
 import com.rally.order.client.DealServiceClient;
+import com.rally.order.client.PaymentServiceClient;
 import com.rally.order.client.dto.CatalogProduct;
+import com.rally.order.client.dto.PaymentMethodDetails;
 import com.rally.order.mapper.OrderMapper;
 import com.rally.order.messaging.config.KafkaTopics;
 import com.rally.order.messaging.event.inbound.participation.ParticipantJoined;
@@ -27,20 +29,13 @@ import org.springframework.transaction.annotation.Transactional;
 class DealOrderTransitionService {
     private final OrderRepository orderRepository;
     private final DealServiceClient dealServiceClient;
+    private final PaymentServiceClient paymentServiceClient;
     private final OutboxEventService outboxEventService;
     private final OrderMapper orderMapper;
 
     @Transactional
     void handleParticipantJoined(ParticipantJoined eventPayload, CatalogProduct catalogProduct){
-        Order order = Order.builder()
-                .userId(eventPayload.userId())
-                .participantId(eventPayload.participantId())
-                .dealId(eventPayload.dealId())
-                .orderType(OrderType.DEAL)
-                .status(OrderStatus.PENDING_AUTHORIZATION)
-                .totalPrice(eventPayload.price())
-                .build();
-
+        PaymentMethodDetails cardDetails = paymentServiceClient.getPaymentMethodDetails(eventPayload.userId(), eventPayload.paymentMethodId());
         OrderProduct product = OrderProduct.builder()
                 .productId(eventPayload.productId())
                 .quantity(1)
@@ -48,9 +43,20 @@ class DealOrderTransitionService {
                 .productName(catalogProduct != null ? catalogProduct.getName() : null)
                 .productImageUrl(catalogProduct != null ? catalogProduct.getImageUrl() : null)
                 .build();
+        Order order = Order.builder()
+                .userId(eventPayload.userId())
+                .participantId(eventPayload.participantId())
+                .dealId(eventPayload.dealId())
+                .orderType(OrderType.DEAL)
+                .status(OrderStatus.PENDING_AUTHORIZATION)
+                .totalPrice(eventPayload.price())
+                .cardBrand(cardDetails.getCardBrand())
+                .cardLast4(cardDetails.getCardLast4())
+                .cardExpMonth(cardDetails.getCardExpMonth())
+                .cardExpYear(cardDetails.getCardExpYear())
+                .build();
         order.addOrderProduct(product);
         order = orderRepository.save(order);
-
         outboxEventService.publish(
                 "Order",
                 order.getId(),
@@ -106,7 +112,6 @@ class DealOrderTransitionService {
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );
-
         boolean slotClaimed = dealServiceClient.authorizeSlot(order.getDealId());
         if (!slotClaimed) {
             cancelOrderForLateAuthorization(order);
