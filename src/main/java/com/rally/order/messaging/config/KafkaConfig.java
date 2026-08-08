@@ -6,6 +6,7 @@ import com.rally.order.messaging.event.inbound.participation.ParticipantJoined;
 import com.rally.order.messaging.event.inbound.participation.ParticipantLeft;
 import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
 import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
+import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.messaging.support.TraceContextRecordInterceptor;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -91,15 +92,15 @@ public class KafkaConfig {
         typeMapper.setTypePrecedence(JacksonJavaTypeMapper.TypePrecedence.TYPE_ID);
         typeMapper.addTrustedPackages("com.rally.order.messaging.event.inbound");
         typeMapper.setIdClassMapping(Map.of(
-                "Payment.Charged", PaymentSucceeded.class,
-                "Payment.Voided", PaymentSucceeded.class,
-                "Payment.Captured", PaymentSucceeded.class,
-                "Payment.Authorized", PaymentSucceeded.class,
-                "Payment.Failed", PaymentFailed.class,
-                "Participant.Joined", ParticipantJoined.class,
-                "Participant.Left", ParticipantLeft.class,
-                "Deal.Succeeded", DealSucceeded.class,
-                "Deal.Failed", DealFailed.class
+                EventTypes.PAYMENT_CHARGED, PaymentSucceeded.class,
+                EventTypes.PAYMENT_VOIDED, PaymentSucceeded.class,
+                EventTypes.PAYMENT_CAPTURED, PaymentSucceeded.class,
+                EventTypes.PAYMENT_AUTHORIZED, PaymentSucceeded.class,
+                EventTypes.PAYMENT_FAILED, PaymentFailed.class,
+                EventTypes.PARTICIPANT_JOINED, ParticipantJoined.class,
+                EventTypes.PARTICIPANT_LEFT, ParticipantLeft.class,
+                EventTypes.DEAL_SUCCEEDED, DealSucceeded.class,
+                EventTypes.DEAL_FAILED, DealFailed.class
         ));
         return typeMapper;
     }
