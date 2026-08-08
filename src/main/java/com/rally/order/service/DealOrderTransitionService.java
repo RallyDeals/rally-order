@@ -83,6 +83,8 @@ class DealOrderTransitionService {
                 eventPayload.paymentId()
         );
         if (updated == 0) return;
+        order.setPaymentErrorCode(eventPayload.errorCode());
+        order.setPaymentErrorMessage(eventPayload.errorMessage());
         dealServiceClient.releaseSlot(order.getDealId());
         publishDealOrderCancelled(order, CancelReason.PAYMENT_DECLINED);
     }

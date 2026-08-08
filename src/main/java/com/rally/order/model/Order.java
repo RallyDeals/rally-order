@@ -83,6 +83,12 @@ public class Order {
     @Column(name = "cancel_reason", length = 30)
     private CancelReason cancelReason;
 
+    @Column(name = "payment_error_code", length = 50)
+    private String paymentErrorCode;
+
+    @Column(name = "payment_error_message")
+    private String paymentErrorMessage;
+
     @Version
     @Column(name = "version", nullable = false)
     private Integer version;
