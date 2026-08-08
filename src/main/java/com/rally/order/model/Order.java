@@ -60,6 +60,10 @@ public class Order {
     @Column(name = "total_price", nullable = false, precision = 10, scale = 2)
     private BigDecimal totalPrice;
 
+    @Builder.Default
+    @Column(name = "address", nullable = false)
+    private String address = "";
+
     @Column(name = "payment_id")
     private UUID paymentId;
 

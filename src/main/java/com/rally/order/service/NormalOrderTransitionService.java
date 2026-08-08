@@ -52,6 +52,7 @@ class NormalOrderTransitionService {
         PaymentMethodDetails cardDetails = paymentServiceClient.getPaymentMethodDetails(userId, request.getPaymentMethodId());
 
         Order order = Order.builder().userId(userId).orderType(OrderType.NORMAL).status(OrderStatus.RESERVING).totalPrice(totalPrice)
+                .address(request.getAddress())
                 .cardLast4(cardDetails.getCardLast4())
                 .cardBrand(cardDetails.getCardBrand())
                 .cardExpMonth(cardDetails.getCardExpMonth())

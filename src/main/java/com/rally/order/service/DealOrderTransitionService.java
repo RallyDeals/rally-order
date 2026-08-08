@@ -50,6 +50,7 @@ class DealOrderTransitionService {
                 .orderType(OrderType.DEAL)
                 .status(OrderStatus.PENDING_AUTHORIZATION)
                 .totalPrice(eventPayload.price())
+                .address(eventPayload.address())
                 .cardBrand(cardDetails.getCardBrand())
                 .cardLast4(cardDetails.getCardLast4())
                 .cardExpMonth(cardDetails.getCardExpMonth())
@@ -211,25 +212,6 @@ class DealOrderTransitionService {
                 CancelReason.DEAL_FAILED
         );
         if (updated == 0) return;
-        publishPaymentVoidRequired(order);
-    }
-
-    @Transactional
-    void republishCapture(Order order){
-        outboxEventService.publish(
-                "Order",
-                order.getId(),
-                EventTypes.ORDER_PAYMENT_CAPTURE_REQUESTED,
-                KafkaTopics.ORDER_PAYMENTS,
-                PaymentCaptureRequired.builder()
-                        .orderId(order.getId())
-                        .paymentId(order.getPaymentId())
-                        .build()
-        );
-    }
-
-    @Transactional
-    void republishVoid(Order order){
         publishPaymentVoidRequired(order);
     }
 
