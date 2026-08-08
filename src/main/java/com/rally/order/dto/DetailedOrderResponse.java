@@ -25,6 +25,8 @@ public class DetailedOrderResponse {
     private UUID participantId;
     private OrderStatus status;
     private CancelReason cancelReason;
+    private String paymentErrorCode;
+    private String paymentErrorMessage;
     private BigDecimal totalPrice;
     private String address;
     private UUID paymentId;
