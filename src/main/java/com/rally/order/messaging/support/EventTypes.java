@@ -8,9 +8,9 @@ public class EventTypes {
     public static final String DEAL_FAILED = "Deal.Failed";
 
     public static final String ORDER_PAYMENT_CHARGE_REQUIRED =
-            "Payment.SettlementRequired.Charge";
+            "Payment.InitRequired.Charge";
     public static final String ORDER_PAYMENT_AUTHORIZE_REQUIRED =
-            "Payment.SettlementRequired.Authorize";
+            "Payment.InitRequired.Authorize";
     public static final String ORDER_PAYMENT_CAPTURE_REQUESTED =
             "Payment.SettlementRequired.Capture";
     public static final String ORDER_PAYMENT_VOID_REQUESTED =
