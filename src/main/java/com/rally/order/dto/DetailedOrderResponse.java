@@ -26,6 +26,7 @@ public class DetailedOrderResponse {
     private OrderStatus status;
     private CancelReason cancelReason;
     private BigDecimal totalPrice;
+    private String address;
     private UUID paymentId;
     private String cardLast4;
     private String cardBrand;

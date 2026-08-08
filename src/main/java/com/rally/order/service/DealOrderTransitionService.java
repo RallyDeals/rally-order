@@ -50,6 +50,7 @@ class DealOrderTransitionService {
                 .orderType(OrderType.DEAL)
                 .status(OrderStatus.PENDING_AUTHORIZATION)
                 .totalPrice(eventPayload.price())
+                .address(eventPayload.address())
                 .cardBrand(cardDetails.getCardBrand())
                 .cardLast4(cardDetails.getCardLast4())
                 .cardExpMonth(cardDetails.getCardExpMonth())

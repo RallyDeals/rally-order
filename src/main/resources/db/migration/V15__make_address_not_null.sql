@@ -1,0 +1,7 @@
+BEGIN;
+
+UPDATE orders SET address = '' WHERE address IS NULL;
+ALTER TABLE orders ALTER COLUMN address SET DEFAULT '';
+ALTER TABLE orders ALTER COLUMN address SET NOT NULL;
+
+COMMIT;
