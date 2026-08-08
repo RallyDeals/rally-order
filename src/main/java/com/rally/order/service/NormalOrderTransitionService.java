@@ -114,6 +114,8 @@ class NormalOrderTransitionService {
                 CancelReason.PAYMENT_DECLINED, eventPayload.paymentId());
         if (updated == 0) return;
         order.setPaymentId(eventPayload.paymentId());
+        order.setPaymentErrorCode(eventPayload.errorCode());
+        order.setPaymentErrorMessage(eventPayload.errorMessage());
         cancelOrder(order, CancelReason.PAYMENT_DECLINED);
     }
 
