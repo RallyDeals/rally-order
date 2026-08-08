@@ -73,8 +73,7 @@ class DealOrderTransitionService {
                 order.getId(),
                 OrderStatus.PENDING_AUTHORIZATION,
                 CancelReason.PAYMENT_DECLINED,
-                eventPayload.paymentId(),
-                eventPayload.paymentIntentId()
+                eventPayload.paymentId()
         );
         if (updated == 0) return;
         dealServiceClient.releaseSlot(order.getDealId());
@@ -101,8 +100,7 @@ class DealOrderTransitionService {
                 eventPayload.orderId(),
                 OrderStatus.PENDING_AUTHORIZATION,
                 OrderStatus.AUTHORIZED,
-                eventPayload.paymentId(),
-                eventPayload.paymentIntentId()
+                eventPayload.paymentId()
         );
         if(updated == 0) return;
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
@@ -144,8 +142,7 @@ class DealOrderTransitionService {
                 eventPayload.orderId(),
                 OrderStatus.PENDING_CAPTURE,
                 OrderStatus.CONFIRMED,
-                eventPayload.paymentId(),
-                eventPayload.paymentIntentId()
+                eventPayload.paymentId()
         );
         if (updated == 0) return;
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
@@ -170,8 +167,7 @@ class DealOrderTransitionService {
                 eventPayload.orderId(),
                 OrderStatus.PENDING_VOID,
                 OrderStatus.CANCELLED,
-                eventPayload.paymentId(),
-                eventPayload.paymentIntentId()
+                eventPayload.paymentId()
         );
         if (updated == 0) return;
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(

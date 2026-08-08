@@ -80,7 +80,7 @@ class NormalOrderTransitionService {
 
     @Transactional
     void confirmOrderForPaymentCharge(PaymentSucceeded eventPayload) {
-        int updated = orderRepository.updateStatusWithPaymentIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED, eventPayload.paymentId(), eventPayload.paymentIntentId());
+        int updated = orderRepository.updateStatusWithPaymentIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED, eventPayload.paymentId());
         if (updated == 0) return;
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
         outboxEventService.publish(
@@ -100,10 +100,9 @@ class NormalOrderTransitionService {
     void cancelOrderForPaymentFailure(PaymentFailed eventPayload) {
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
         int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE,
-                CancelReason.PAYMENT_DECLINED, eventPayload.paymentId(), eventPayload.paymentIntentId());
+                CancelReason.PAYMENT_DECLINED, eventPayload.paymentId());
         if (updated == 0) return;
         order.setPaymentId(eventPayload.paymentId());
-        order.setPaymentIntentId(eventPayload.paymentIntentId());
         cancelOrder(order, CancelReason.PAYMENT_DECLINED);
     }
 
