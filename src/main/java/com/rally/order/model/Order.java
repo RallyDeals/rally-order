@@ -63,8 +63,17 @@ public class Order {
     @Column(name = "payment_id")
     private UUID paymentId;
 
-    @Column(name = "payment_intent_id")
-    private String paymentIntentId;
+    @Column(name = "card_last4", length = 4)
+    private String cardLast4;
+
+    @Column(name = "card_brand", length = 20)
+    private String cardBrand;
+
+    @Column(name = "card_exp_month")
+    private Short cardExpMonth;
+
+    @Column(name = "card_exp_year")
+    private Short cardExpYear;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "cancel_reason", length = 30)
