@@ -44,10 +44,10 @@ public class CatalogServiceFakeClientImpl implements CatalogServiceClient {
                 notFound.add(productId);
             } else {
                 found.put(productId, CatalogProduct.builder()
-                        .productId(productId)
+                        .id(productId)
                         .name("Fake Product " + productId)
                         .imageUrl("https://picsum.photos/seed/" + productId + "/200")
-                        .price(BigDecimal.valueOf(150.0))
+                        .basePrice(BigDecimal.valueOf(150.0))
                         .build());
             }
         });
