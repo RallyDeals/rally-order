@@ -9,8 +9,8 @@ import java.util.UUID;
 @Getter
 @Builder
 public class CatalogProduct {
-    private UUID productId;
+    private UUID id;
     private String name;
     private String imageUrl;
-    private BigDecimal price;
+    private BigDecimal basePrice;
 }
