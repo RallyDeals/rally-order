@@ -127,8 +127,10 @@ class DealOrderTransitionService {
                 EventTypes.ORDER_AUTHORIZED,
                 KafkaTopics.ORDER_EVENTS,
                 OrderAuthorized.builder()
+                        .orderId(order.getId())
                         .dealId(order.getDealId())
                         .userId(order.getUserId())
+                        .totalPrice(order.getTotalPrice())
                         .build()
         );
     }
@@ -164,7 +166,9 @@ class DealOrderTransitionService {
                 OrderCreated.builder()
                         .orderId(eventPayload.orderId())
                         .userId(order.getUserId())
-                        .items(orderMapper.toOrderItems(order.getOrderProducts()))
+                        .items(orderMapper.toOrderProductResponses(order.getOrderProducts()))
+                        .totalPrice(order.getTotalPrice())
+                        .address(order.getAddress())
                         .build()
         );
     }
@@ -242,7 +246,9 @@ class DealOrderTransitionService {
                         .userId(order.getUserId())
                         .dealId(order.getDealId())
                         .participantId(order.getParticipantId())
-                        .reason(cancelReason.name())
+                        .reason(cancelReason)
+                        .items(orderMapper.toOrderProductResponses(order.getOrderProducts()))
+                        .totalPrice(order.getTotalPrice())
                         .build()
         );
     }

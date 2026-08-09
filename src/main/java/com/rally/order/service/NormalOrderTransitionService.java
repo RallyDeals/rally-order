@@ -5,7 +5,7 @@ import com.rally.order.client.dto.CatalogLookupResponse;
 import com.rally.order.client.dto.CatalogProduct;
 import com.rally.order.client.dto.PaymentMethodDetails;
 import com.rally.order.dto.CheckOutOrderRequest;
-import com.rally.order.dto.OrderItem;
+import com.rally.order.dto.OrderProductResponse;
 import com.rally.order.mapper.OrderMapper;
 import com.rally.order.messaging.config.KafkaTopics;
 import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
@@ -102,7 +102,9 @@ class NormalOrderTransitionService {
                 OrderCreated.builder()
                         .orderId(eventPayload.orderId())
                         .userId(order.getUserId())
-                        .items(orderMapper.toOrderItems(order.getOrderProducts()))
+                        .items(orderMapper.toOrderProductResponses(order.getOrderProducts()))
+                        .totalPrice(order.getTotalPrice())
+                        .address(order.getAddress())
                         .build()
         );
     }
@@ -135,7 +137,7 @@ class NormalOrderTransitionService {
     }
 
     private Order cancelOrder(Order order, CancelReason cancelReason) {
-        List<OrderItem> orderItems = orderMapper.toOrderItems(order.getOrderProducts());
+        List<OrderProductResponse> orderItems = orderMapper.toOrderProductResponses(order.getOrderProducts());
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_NORMAL_CANCELLED,
@@ -145,6 +147,8 @@ class NormalOrderTransitionService {
                         .userId(order.getUserId())
                         .items(orderItems)
                         .cancelReason(cancelReason)
+                        .totalPrice(order.getTotalPrice())
+                        .paymentErrorMessage(order.getPaymentErrorMessage())
                         .build()
         );
         return order;
