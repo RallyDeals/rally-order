@@ -38,7 +38,7 @@ class NormalOrderTransitionService {
             return OrderProduct.builder()
                     .productId(item.getProductId())
                     .quantity(item.getQuantity())
-                    .unitPrice(catalogProduct.getPrice())
+                    .unitPrice(catalogProduct.getBasePrice())
                     .productName(catalogProduct.getName())
                     .productImageUrl(catalogProduct.getImageUrl())
                     .build();
