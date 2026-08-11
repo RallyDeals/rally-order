@@ -90,11 +90,7 @@ spring.datasource.driver-class-name=org.postgresql.Driver
 
 spring.jpa.hibernate.ddl-auto=validate
 spring.flyway.enabled=true
-
-rally.jwt.secret=${JWT_SECRET}
 ```
-
-Set the `JWT_SECRET` environment variable locally before running the app.
 
 ### 3. Run migrations & start the app
 
