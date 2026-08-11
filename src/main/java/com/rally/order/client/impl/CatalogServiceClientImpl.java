@@ -25,7 +25,7 @@ public class CatalogServiceClientImpl implements CatalogServiceClient {
 
     @Override
     public CatalogLookupResponse lookup(CatalogLookupRequest request) {
-        String url = catalogServiceUrl + "/lookup";
+        String url = catalogServiceUrl + "/products/lookup";
 
         try{
             ResponseEntity<CatalogLookupResponse> response =

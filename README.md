@@ -13,7 +13,7 @@ coordinate with Catalog, Inventory, Deal, and Payment services.
 - **PostgreSQL** — persistence, managed via Flyway migrations
 - **Apache Kafka** — event-driven communication with other services
 - **Flyway** — versioned DB schema migrations
-- **Spring Security + JWT** — authentication (via shared module)
+- **Spring Security** — authentication is handled upstream by the gateway, which forwards the authenticated user's ID via the `X-User-Id` header
 - **springdoc-openapi** — API documentation
 
 ---
