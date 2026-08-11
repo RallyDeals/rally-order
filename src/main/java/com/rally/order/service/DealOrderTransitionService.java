@@ -155,6 +155,7 @@ class DealOrderTransitionService {
                 eventPayload.paymentId()
         );
         if (updated == 0) return;
+        orderRepository.initializeShippingStatusIfNull(eventPayload.orderId());
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );

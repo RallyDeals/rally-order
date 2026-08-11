@@ -89,6 +89,13 @@ public class Order {
     @Column(name = "payment_error_message")
     private String paymentErrorMessage;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "shipping_status", length = 20)
+    private ShippingStatus shippingStatus;
+
+    @Column(name = "shipping_status_updated_at")
+    private OffsetDateTime shippingStatusUpdatedAt;
+
     @Version
     @Column(name = "version", nullable = false)
     private Integer version;

@@ -4,6 +4,7 @@ import com.rally.order.model.CancelReason;
 import com.rally.order.model.Order;
 import com.rally.order.model.OrderStatus;
 import com.rally.order.model.OrderType;
+import com.rally.order.model.ShippingStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -11,6 +12,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 import java.time.Instant;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,10 +50,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
 
     Order findOrderByDealIdAndParticipantId(UUID dealId, UUID participantId);
 
-    List<Order> findByUserId(UUID userId);
-
     @Query("SELECT o FROM Order o WHERE o.userId = :userId " +
             "AND (:status IS NULL OR o.status = :status) " +
             "AND (:orderType IS NULL OR o.orderType = :orderType)")
     Page<Order> findByUserIdAndFilters(UUID userId, OrderStatus status, OrderType orderType, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Order o SET o.shippingStatus = ShippingStatus.PROCESSING, o.shippingStatusUpdatedAt = CURRENT_TIMESTAMP " +
+            "WHERE o.id = :orderId AND o.shippingStatus IS NULL")
+    void initializeShippingStatusIfNull(UUID orderId);
+
+    @Modifying
+    @Query("UPDATE Order o SET o.shippingStatus = :newStatus, o.shippingStatusUpdatedAt = CURRENT_TIMESTAMP " +
+            "WHERE o.shippingStatus = :oldStatus AND o.shippingStatusUpdatedAt < :threshold")
+    int advanceShippingStatus(ShippingStatus oldStatus, ShippingStatus newStatus, OffsetDateTime threshold);
 }

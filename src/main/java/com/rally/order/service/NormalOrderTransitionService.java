@@ -93,6 +93,7 @@ class NormalOrderTransitionService {
     void confirmOrderForPaymentCharge(PaymentSucceeded eventPayload) {
         int updated = orderRepository.updateStatusWithPaymentIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED, eventPayload.paymentId());
         if (updated == 0) return;
+        orderRepository.initializeShippingStatusIfNull(eventPayload.orderId());
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
         outboxEventService.publish(
                 "Order",
