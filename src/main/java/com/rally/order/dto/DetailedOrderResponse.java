@@ -3,6 +3,7 @@ package com.rally.order.dto;
 import com.rally.order.model.CancelReason;
 import com.rally.order.model.OrderStatus;
 import com.rally.order.model.OrderType;
+import com.rally.order.model.ShippingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,6 +25,7 @@ public class DetailedOrderResponse {
     private UUID dealId;
     private UUID participantId;
     private OrderStatus status;
+    private ShippingStatus shippingStatus;
     private CancelReason cancelReason;
     private String paymentErrorCode;
     private String paymentErrorMessage;
