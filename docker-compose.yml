@@ -68,7 +68,6 @@ services:
 #      SPRING_DATASOURCE_USERNAME: user
 #      SPRING_DATASOURCE_PASSWORD: password
 #      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:29092
-#      JWT_SECRET: ${JWT_SECRET}
 #    ports:
 #      - "8081:8081"
 #    depends_on:
