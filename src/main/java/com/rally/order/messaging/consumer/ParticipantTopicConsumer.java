@@ -6,12 +6,14 @@ import com.rally.order.messaging.event.inbound.participation.ParticipantLeft;
 import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.service.DealOrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ParticipantTopicConsumer implements TopicConsumer{
@@ -27,12 +29,13 @@ public class ParticipantTopicConsumer implements TopicConsumer{
         String eventType = extractType(record);
         if (eventType == null)
             return;
+        log.debug("Received participation event {}", eventType);
         switch(eventType){
             case EventTypes.PARTICIPANT_JOINED ->
                     dealOrderService.handleParticipationJoin((ParticipantJoined) record.value());
             case EventTypes.PARTICIPANT_LEFT ->
                     dealOrderService.handleParticipationLeft((ParticipantLeft) record.value());
-            default -> System.out.println("Unhandled participation event type: " + eventType);
+            default -> log.warn("Unhandled participation event type: {}", eventType);
         }
 
     }

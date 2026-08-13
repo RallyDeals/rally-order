@@ -6,6 +6,7 @@ import com.rally.order.client.CatalogServiceClient;
 import com.rally.order.client.dto.CatalogLookupRequest;
 import com.rally.order.client.dto.CatalogLookupResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Profile("prod")
 @Component
 @RequiredArgsConstructor
@@ -32,8 +34,10 @@ public class CatalogServiceClientImpl implements CatalogServiceClient {
                     restTemplate.postForEntity(url, request, CatalogLookupResponse.class);
             return response.getBody();
         }catch (ResourceAccessException resourceAccessException){
+            log.warn("Catalog service unavailable calling {}", url, resourceAccessException);
             throw new ServiceUnavailableException("Catalog service is unavailable");
         } catch(HttpServerErrorException serverErrorException){
+            log.warn("Catalog service returned server error calling {}", url, serverErrorException);
             throw new InternalServerErrorException("Catalog service returned server error");
         }
     }
