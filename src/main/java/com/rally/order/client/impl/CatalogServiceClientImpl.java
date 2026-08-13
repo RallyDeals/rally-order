@@ -16,7 +16,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Slf4j
-@Profile("dev")
+@Profile("prod")
 @Component
 @RequiredArgsConstructor
 public class CatalogServiceClientImpl implements CatalogServiceClient {
