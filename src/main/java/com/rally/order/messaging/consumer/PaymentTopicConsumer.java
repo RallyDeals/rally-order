@@ -8,12 +8,14 @@ import com.rally.order.service.DealOrderService;
 import com.rally.order.service.NormalOrderService;
 import com.rally.order.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class PaymentTopicConsumer implements TopicConsumer {
@@ -32,6 +34,7 @@ public class PaymentTopicConsumer implements TopicConsumer {
         if (eventType == null)
             return;
 
+        log.debug("Received payment event {}", eventType);
         switch (eventType) {
             case EventTypes.PAYMENT_CHARGED ->
                     normalOrderService.handlePaymentCharged((PaymentSucceeded) record.value());
@@ -41,7 +44,7 @@ public class PaymentTopicConsumer implements TopicConsumer {
                     dealOrderService.handlePaymentCaptured((PaymentSucceeded) record.value());
             case EventTypes.PAYMENT_VOIDED -> dealOrderService.handlePaymentVoided((PaymentSucceeded) record.value());
             case EventTypes.PAYMENT_FAILED -> orderService.handlePaymentFailed((PaymentFailed) record.value());
-            default -> System.out.println("Unhandled payment event type: " + eventType);
+            default -> log.warn("Unhandled payment event type: {}", eventType);
         }
     }
 

@@ -19,6 +19,7 @@ import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.model.*;
 import com.rally.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 class NormalOrderTransitionService {
@@ -61,13 +63,17 @@ class NormalOrderTransitionService {
 
         orderProducts.forEach(order::addOrderProduct);
         order = orderRepository.save(order);
+        log.info("Created order {} in RESERVING status for user {}", order.getId(), userId);
         return order;
     }
 
     @Transactional
     Order cancelOrderForInventoryFailure(Order order, CancelReason cancelReason) {
         int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.RESERVING, cancelReason);
-        if (updated == 0) return orderRepository.findById(order.getId()).orElse(order);
+        if (updated == 0) {
+            log.debug("Skipped cancelling order {} for inventory failure, no longer in RESERVING status", order.getId());
+            return orderRepository.findById(order.getId()).orElse(order);
+        }
         return cancelOrder(order, cancelReason);
     }
 
@@ -77,6 +83,7 @@ class NormalOrderTransitionService {
         if (updated == 0)
             return orderRepository.findById(order.getId()).orElse(order);
         order.setStatus(OrderStatus.PENDING_CHARGE);
+        log.info("Order {} moved to PENDING_CHARGE, requesting payment charge", order.getId());
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_PAYMENT_CHARGE_REQUIRED,
                 KafkaTopics.ORDER_PAYMENTS,
                 PaymentChargeRequired.builder()
@@ -95,6 +102,7 @@ class NormalOrderTransitionService {
         if (updated == 0) return;
         orderRepository.initializeShippingStatusIfNull(eventPayload.orderId());
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
+        log.info("Order {} confirmed after payment charge, paymentId={}", order.getId(), eventPayload.paymentId());
         outboxEventService.publish(
                 "Order",
                 eventPayload.orderId(),
@@ -141,6 +149,7 @@ class NormalOrderTransitionService {
         List<OrderProductResponse> orderItems = orderMapper.toOrderProductResponses(order.getOrderProducts());
         order.setStatus(OrderStatus.CANCELLED);
         order.setCancelReason(cancelReason);
+        log.info("Order {} cancelled, reason={}", order.getId(), cancelReason);
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_NORMAL_CANCELLED,
                 KafkaTopics.ORDER_EVENTS,
                 NormalOrderCancelled.builder()

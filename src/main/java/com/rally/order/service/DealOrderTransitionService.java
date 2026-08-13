@@ -20,10 +20,12 @@ import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.model.*;
 import com.rally.order.repository.OrderRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 class DealOrderTransitionService {
@@ -58,6 +60,7 @@ class DealOrderTransitionService {
                 .build();
         order.addOrderProduct(product);
         order = orderRepository.save(order);
+        log.info("Created order {} in PENDING_AUTHORIZATION for participant {} in deal {}", order.getId(), eventPayload.participantId(), eventPayload.dealId());
         outboxEventService.publish(
                 "Order",
                 order.getId(),
@@ -85,6 +88,7 @@ class DealOrderTransitionService {
         if (updated == 0) return;
         order.setPaymentErrorCode(eventPayload.errorCode());
         order.setPaymentErrorMessage(eventPayload.errorMessage());
+        log.info("Order {} cancelled, reason=PAYMENT_DECLINED", order.getId());
         dealServiceClient.releaseSlot(order.getDealId());
         publishDealOrderCancelled(order, CancelReason.PAYMENT_DECLINED);
     }
@@ -100,6 +104,7 @@ class DealOrderTransitionService {
                 CancelReason.PARTICIPANT_LEFT
         );
         if (updated == 0) return;
+        log.info("Order {} moved to PENDING_VOID, reason=PARTICIPANT_LEFT", order.getId());
         publishPaymentVoidRequired(order);
     }
 
@@ -117,10 +122,11 @@ class DealOrderTransitionService {
         );
         boolean slotClaimed = dealServiceClient.authorizeSlot(order.getDealId());
         if (!slotClaimed) {
+            log.info("Order {} authorized but deal slot no longer claimable, cancelling", order.getId());
             cancelOrderForLateAuthorization(order);
             return;
         }
-
+        log.info("Order {} moved to AUTHORIZED, paymentId={}", order.getId(), eventPayload.paymentId());
         outboxEventService.publish(
                 "Order",
                 order.getId(),
@@ -142,6 +148,7 @@ class DealOrderTransitionService {
                 CancelReason.DEAL_RESOLVED
         );
         if (updated == 0) return;
+        log.info("Order {} moved to PENDING_VOID, reason=DEAL_RESOLVED", order.getId());
         dealServiceClient.releaseSlot(order.getDealId());
         publishPaymentVoidRequired(order);
     }
@@ -159,6 +166,7 @@ class DealOrderTransitionService {
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );
+        log.info("Order {} confirmed after payment capture, paymentId={}", order.getId(), eventPayload.paymentId());
         outboxEventService.publish(
                 "Order",
                 eventPayload.orderId(),
@@ -188,6 +196,7 @@ class DealOrderTransitionService {
         );
         if (order.getCancelReason() == CancelReason.PARTICIPANT_LEFT)
             dealServiceClient.releaseAuthorizedSlot(order.getDealId());
+        log.info("Order {} cancelled, reason={}", order.getId(), order.getCancelReason());
         publishDealOrderCancelled(order, order.getCancelReason());
     }
 
@@ -199,6 +208,7 @@ class DealOrderTransitionService {
                 OrderStatus.PENDING_CAPTURE
         );
         if (updated == 0) return;
+        log.info("Order {} moved to PENDING_CAPTURE after deal succeeded", order.getId());
         outboxEventService.publish(
                 "Order",
                 order.getId(),
@@ -219,6 +229,7 @@ class DealOrderTransitionService {
                 CancelReason.DEAL_FAILED
         );
         if (updated == 0) return;
+        log.info("Order {} moved to PENDING_VOID, reason=DEAL_FAILED", order.getId());
         publishPaymentVoidRequired(order);
     }
 
@@ -231,6 +242,7 @@ class DealOrderTransitionService {
         );
         if (updated == 0)
             return;
+        log.info("Order {} cancelled, reason=PAYMENT_TIMEOUT", order.getId());
         dealServiceClient.releaseSlot(order.getDealId());
         publishDealOrderCancelled(order, CancelReason.PAYMENT_TIMEOUT);
         publishPaymentTimeout(order);

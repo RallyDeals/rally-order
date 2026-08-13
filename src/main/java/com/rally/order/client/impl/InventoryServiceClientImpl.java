@@ -6,6 +6,7 @@ import com.rally.order.client.InventoryServiceClient;
 import com.rally.order.client.dto.InventoryReserveRequest;
 import com.rally.order.client.dto.InventoryReserveResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -14,6 +15,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+@Slf4j
 @Profile("prod")
 @Component
 @RequiredArgsConstructor
@@ -32,8 +34,10 @@ public class InventoryServiceClientImpl implements InventoryServiceClient {
                     restTemplate.postForEntity(url, request, InventoryReserveResponse.class);
             return response.getBody();
         } catch (ResourceAccessException resourceAccessException) {
+            log.warn("Inventory service unavailable calling {}", url, resourceAccessException);
             throw new ServiceUnavailableException("Inventory service is unavailable");
         } catch(HttpServerErrorException serverErrorException){
+            log.warn("Inventory service returned server error calling {}", url, serverErrorException);
             throw new InternalServerErrorException("Inventory service returned server error");
         }
     }
