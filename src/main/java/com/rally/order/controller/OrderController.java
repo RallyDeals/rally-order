@@ -14,19 +14,19 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
 public class OrderController {
     private final NormalOrderService normalOrderService;
     private final OrderService orderService;
 
-    @PostMapping("/orders/checkout")
+    @PostMapping("/checkout")
     public ResponseEntity<CheckOutOrderResponse> orderCheckout(@RequestHeader("X-User-Id") UUID userId, @Valid @RequestBody CheckOutOrderRequest orderRequest) {
         CheckOutOrderResponse response = this.normalOrderService.checkoutOrder(userId, orderRequest);
         return ResponseEntity.status(202).body(response);
     }
 
-    @GetMapping("/orders/my")
+    @GetMapping("/my")
     public ResponseEntity<BriefOrderPageResponse> getMyOrders(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestParam(required = false) String status,
@@ -36,7 +36,7 @@ public class OrderController {
         return ResponseEntity.status(200).body(this.orderService.getMyOrders(userId, status, orderType, page, limit));
     }
 
-    @GetMapping("/orders/my/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<DetailedOrderResponse> getOrderDetails(@RequestHeader("X-User-Id") UUID userId, @PathVariable UUID id){
         return ResponseEntity.status(200).body(this.orderService.getOrderDetails(userId, id));
     }
