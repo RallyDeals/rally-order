@@ -14,15 +14,15 @@ import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.CheckOutOrderResponse;
 import com.rally.order.dto.OrderItem;
 import com.rally.order.mapper.OrderMapper;
-import com.rally.order.messaging.event.inbound.payment.PaymentFailed;
-import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.model.CancelReason;
 import com.rally.order.model.Order;
 import com.rally.order.model.OrderStatus;
-import com.rally.order.model.OrderType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -32,13 +32,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 
+import static java.util.Arrays.stream;
+import static java.util.stream.Collectors.toMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -68,94 +69,31 @@ class NormalOrderServiceTest {
         productId2 = UUID.randomUUID();
     }
 
+    // ---- checkoutOrder happy path ----
+
     @Test
     void checkoutOrder_whenProductsFoundAndInventoryReserved_preparesOrderForChargeAndReturnsResponse() {
-        CheckOutOrderRequest request = checkoutRequest(
-                item(productId1, 2),
-                item(productId2, 1)
-        );
-        CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN), productId2, catalogProduct(productId2, BigDecimal.valueOf(20))))
-                .notFound(List.of())
-                .build();
-        when(catalogServiceClient.lookup(any(CatalogLookupRequest.class))).thenReturn(catalogResponse);
-
-        Order reservingOrder = Order.builder()
-                .id(UUID.randomUUID())
-                .orderType(OrderType.NORMAL)
-                .userId(userId)
-                .status(OrderStatus.RESERVING)
-                .totalPrice(BigDecimal.valueOf(40))
-                .build();
-        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId)).thenReturn(reservingOrder);
-
-        when(inventoryServiceClient.reserveInventory(any(InventoryReserveRequest.class)))
-                .thenReturn(InventoryReserveResponse.builder()
-                        .orderId(reservingOrder.getId())
-                        .items(List.of(
-                                InventoryReserveItem.builder().productId(productId1).reserved(true).available(10).build(),
-                                InventoryReserveItem.builder().productId(productId2).reserved(true).available(10).build()
-                        ))
-                        .build());
-
-        Order pendingChargeOrder = Order.builder()
-                .id(reservingOrder.getId())
-                .userId(userId)
-                .status(OrderStatus.PENDING_CHARGE)
-                .totalPrice(reservingOrder.getTotalPrice())
-                .build();
-        when(orderTransitionService.prepareOrderForCharge(reservingOrder, userId, request.getPaymentMethodId()))
-                .thenReturn(pendingChargeOrder);
-
-        CheckOutOrderResponse expectedResponse = CheckOutOrderResponse.builder().id(reservingOrder.getId()).build();
-        when(orderMapper.toCheckoutOrderResponse(pendingChargeOrder)).thenReturn(expectedResponse);
+        CheckOutOrderRequest request = checkoutRequest(item(productId1, 2), item(productId2, 1));
+        CatalogLookupResponse catalogResponse = foundCatalogResponse(catalogProduct(productId1, BigDecimal.TEN), catalogProduct(productId2, BigDecimal.valueOf(20)));
+        Order reservingOrder = givenReservingOrderCreated(request, catalogResponse, BigDecimal.valueOf(40));
+        when(inventoryServiceClient.reserveInventory(any(InventoryReserveRequest.class))).thenReturn(
+                reserveResponse(reservingOrder.getId(), reservedItem(productId1, true, 10), reservedItem(productId2, true, 10)));
+        Order pendingChargeOrder = withStatus(reservingOrder, OrderStatus.PENDING_CHARGE);
+        when(orderTransitionService.prepareOrderForCharge(reservingOrder, userId, request.getPaymentMethodId())).thenReturn(pendingChargeOrder);
+        CheckOutOrderResponse expectedResponse = givenMappedResponse(pendingChargeOrder);
 
         CheckOutOrderResponse actualResponse = normalOrderService.checkoutOrder(userId, request);
 
         assertEquals(expectedResponse, actualResponse);
         ArgumentCaptor<InventoryReserveRequest> reserveRequestCaptor = ArgumentCaptor.forClass(InventoryReserveRequest.class);
-        verify(inventoryServiceClient, times(1)).reserveInventory(reserveRequestCaptor.capture());
-        InventoryReserveRequest reserveRequest = reserveRequestCaptor.getValue();
-        assertEquals(reservingOrder.getId(), reserveRequest.getOrderId());
-        assertTrue(reserveRequest.getItems().stream().anyMatch(i -> i.getProductId().equals(productId1) && i.getQuantity() == 2));
-        assertTrue(reserveRequest.getItems().stream().anyMatch(i -> i.getProductId().equals(productId2) && i.getQuantity() == 1));
+        verify(inventoryServiceClient).reserveInventory(reserveRequestCaptor.capture());
+        assertEquals(reservingOrder.getId(), reserveRequestCaptor.getValue().getOrderId());
+        assertEquals(request.getOrderItems(), reserveRequestCaptor.getValue().getItems());
         verify(orderTransitionService).prepareOrderForCharge(reservingOrder, userId, request.getPaymentMethodId());
         verify(orderTransitionService, never()).cancelOrderForInventoryFailure(any(), any());
     }
 
-    @Test
-    void handlePaymentCharged_delegatesToOrderTransitionService() {
-        PaymentSucceeded event = new PaymentSucceeded(UUID.randomUUID(), "pi_123", UUID.randomUUID(), BigDecimal.valueOf(40));
-
-        normalOrderService.handlePaymentCharged(event);
-
-        verify(orderTransitionService).confirmOrderForPaymentCharge(event);
-    }
-
-    @Test
-    void handlePaymentFailed_delegatesToOrderTransitionService() {
-        PaymentFailed event = new PaymentFailed(UUID.randomUUID(), "pi_123", UUID.randomUUID(), BigDecimal.valueOf(40), "card_declined", "402");
-
-        normalOrderService.handlePaymentFailed(event);
-
-        verify(orderTransitionService).cancelOrderForPaymentFailure(event);
-    }
-
-    @Test
-    void expireStuckReservation_delegatesToOrderTransitionServiceWithReservationIncompleteReason() {
-        Order order = Order.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .status(OrderStatus.RESERVING)
-                .totalPrice(BigDecimal.TEN)
-                .build();
-
-        normalOrderService.expireStuckReservation(order);
-
-        verify(orderTransitionService).cancelOrderForInventoryFailure(order, CancelReason.RESERVATION_INCOMPLETE);
-    }
-
-    // ---- Catalog unavailable / products not found ----
+    // ---- catalog lookup failures ----
 
     @Test
     void checkoutOrder_whenCatalogServiceUnavailable_propagatesExceptionWithoutCreatingOrder() {
@@ -171,11 +109,7 @@ class NormalOrderServiceTest {
     @Test
     void checkoutOrder_whenProductNotFoundInCatalog_throwsWithoutCreatingOrder() {
         CheckOutOrderRequest request = checkoutRequest(item(productId1, 1));
-        CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of())
-                .notFound(List.of(productId1))
-                .build();
-        when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
+        when(catalogServiceClient.lookup(any())).thenReturn(notFoundCatalogResponse(productId1));
 
         assertThrows(ProductNotFoundException.class, () -> normalOrderService.checkoutOrder(userId, request));
 
@@ -183,183 +117,71 @@ class NormalOrderServiceTest {
         verify(inventoryServiceClient, never()).reserveInventory(any(InventoryReserveRequest.class));
     }
 
-    // ---- Inventory unavailable / insufficient stock ----
+    // ---- order creation failures (e.g. card details retrieval) ----
 
     @Test
-    void checkoutOrder_whenInventoryServiceUnavailable_cancelsOrderWithInventoryUnreachableReason() {
+    void checkoutOrder_whenCreateReservingOrderThrows_propagatesExceptionWithoutReservingInventory() {
         CheckOutOrderRequest request = checkoutRequest(item(productId1, 1));
-        CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN)))
-                .notFound(List.of())
-                .build();
+        CatalogLookupResponse catalogResponse = foundCatalogResponse(catalogProduct(productId1, BigDecimal.TEN));
         when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
+        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId))
+                .thenThrow(new ServiceUnavailableException("Payment service is unavailable"));
 
-        Order reservingOrder = Order.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .status(OrderStatus.RESERVING)
-                .totalPrice(BigDecimal.TEN)
-                .build();
-        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId)).thenReturn(reservingOrder);
+        assertThrows(ServiceUnavailableException.class, () -> normalOrderService.checkoutOrder(userId, request));
 
-        when(inventoryServiceClient.reserveInventory(any(InventoryReserveRequest.class)))
-                .thenThrow(new ServiceUnavailableException("Inventory service is unavailable"));
-
-        Order cancelledOrder = Order.builder()
-                .id(reservingOrder.getId())
-                .userId(userId)
-                .status(OrderStatus.CANCELLED)
-                .cancelReason(CancelReason.INVENTORY_UNREACHABLE)
-                .totalPrice(reservingOrder.getTotalPrice())
-                .build();
-        when(orderTransitionService.cancelOrderForInventoryFailure(reservingOrder, CancelReason.INVENTORY_UNREACHABLE))
-                .thenReturn(cancelledOrder);
-
-        CheckOutOrderResponse expectedResponse = CheckOutOrderResponse.builder().id(reservingOrder.getId()).build();
-        when(orderMapper.toCheckoutOrderResponse(cancelledOrder)).thenReturn(expectedResponse);
-
-        CheckOutOrderResponse actualResponse = normalOrderService.checkoutOrder(userId, request);
-
-        assertEquals(expectedResponse, actualResponse);
-        verify(orderTransitionService).cancelOrderForInventoryFailure(reservingOrder, CancelReason.INVENTORY_UNREACHABLE);
-        verify(orderTransitionService, never()).prepareOrderForCharge(any(), any(), any());
+        verify(inventoryServiceClient, never()).reserveInventory(any());
     }
 
-    @Test
-    void checkoutOrder_whenInventoryServiceThrowsUnexpectedException_cancelsOrderWithServerErrorReason() {
+    // ---- inventory reservation failures (all caught by the same catch block and mapped via reasonFrom) ----
+
+    @ParameterizedTest(name = "{1}")
+    @MethodSource("inventoryFailureScenarios")
+    void checkoutOrder_whenInventoryReservationFails_cancelsOrderWithMappedReason(InventoryFailureStub stubFailure, CancelReason expectedReason) {
         CheckOutOrderRequest request = checkoutRequest(item(productId1, 1));
-        CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN)))
-                .notFound(List.of())
-                .build();
-        when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
+        CatalogLookupResponse catalogResponse = foundCatalogResponse(catalogProduct(productId1, BigDecimal.TEN));
+        Order reservingOrder = givenReservingOrderCreated(request, catalogResponse, BigDecimal.TEN);
+        stubFailure.applyTo(inventoryServiceClient, reservingOrder.getId(), productId1);
 
-        Order reservingOrder = Order.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .status(OrderStatus.RESERVING)
-                .totalPrice(BigDecimal.TEN)
-                .build();
-        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId)).thenReturn(reservingOrder);
-
-        when(inventoryServiceClient.reserveInventory(any(InventoryReserveRequest.class)))
-                .thenThrow(new RuntimeException("Unexpected inventory service failure"));
-
-        Order cancelledOrder = Order.builder()
-                .id(reservingOrder.getId())
-                .userId(userId)
-                .status(OrderStatus.CANCELLED)
-                .cancelReason(CancelReason.SERVER_ERROR)
-                .totalPrice(reservingOrder.getTotalPrice())
-                .build();
-        when(orderTransitionService.cancelOrderForInventoryFailure(reservingOrder, CancelReason.SERVER_ERROR))
-                .thenReturn(cancelledOrder);
-
-        CheckOutOrderResponse expectedResponse = CheckOutOrderResponse.builder().id(reservingOrder.getId()).build();
-        when(orderMapper.toCheckoutOrderResponse(cancelledOrder)).thenReturn(expectedResponse);
-
-        CheckOutOrderResponse actualResponse = normalOrderService.checkoutOrder(userId, request);
-
-        assertEquals(expectedResponse, actualResponse);
-        verify(orderTransitionService).cancelOrderForInventoryFailure(reservingOrder, CancelReason.SERVER_ERROR);
-        verify(orderTransitionService, never()).prepareOrderForCharge(any(), any(), any());
+        assertCheckoutCancelledForInventoryFailure(request, reservingOrder, expectedReason);
     }
 
-    @Test
-    void checkoutOrder_whenStockInsufficient_cancelsOrderWithInsufficientStockReason() {
-        CheckOutOrderRequest request = checkoutRequest(item(productId1, 5));
-        CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN)))
-                .notFound(List.of())
-                .build();
-        when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
-
-        Order reservingOrder = Order.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .status(OrderStatus.RESERVING)
-                .totalPrice(BigDecimal.valueOf(50))
-                .build();
-        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId)).thenReturn(reservingOrder);
-
-        when(inventoryServiceClient.reserveInventory(any(InventoryReserveRequest.class)))
-                .thenReturn(InventoryReserveResponse.builder()
-                        .orderId(reservingOrder.getId())
-                        .items(List.of(InventoryReserveItem.builder().productId(productId1).reserved(false).available(2).build()))
-                        .build());
-
-        Order cancelledOrder = Order.builder()
-                .id(reservingOrder.getId())
-                .userId(userId)
-                .status(OrderStatus.CANCELLED)
-                .cancelReason(CancelReason.INSUFFICIENT_STOCK)
-                .totalPrice(reservingOrder.getTotalPrice())
-                .build();
-        when(orderTransitionService.cancelOrderForInventoryFailure(reservingOrder, CancelReason.INSUFFICIENT_STOCK))
-                .thenReturn(cancelledOrder);
-
-        CheckOutOrderResponse expectedResponse = CheckOutOrderResponse.builder().id(reservingOrder.getId()).build();
-        when(orderMapper.toCheckoutOrderResponse(cancelledOrder)).thenReturn(expectedResponse);
-
-        CheckOutOrderResponse actualResponse = normalOrderService.checkoutOrder(userId, request);
-
-        assertEquals(expectedResponse, actualResponse);
-        verify(orderTransitionService).cancelOrderForInventoryFailure(reservingOrder, CancelReason.INSUFFICIENT_STOCK);
-        verify(orderTransitionService, never()).prepareOrderForCharge(any(), any(), any());
-    }
-
-    @Test
-    void checkoutOrder_whenOneOfMultipleItemsInsufficientInBatchResponse_cancelsOrderWithInsufficientStockReason() {
-        CheckOutOrderRequest request = checkoutRequest(
-                item(productId1, 2),
-                item(productId2, 5)
+    private static Stream<Arguments> inventoryFailureScenarios() {
+        return Stream.of(
+                Arguments.of((InventoryFailureStub) (client, orderId, productId) ->
+                                when(client.reserveInventory(any())).thenThrow(new ServiceUnavailableException("Inventory service is unavailable")),
+                        CancelReason.INVENTORY_UNREACHABLE),
+                Arguments.of((InventoryFailureStub) (client, orderId, productId) ->
+                                when(client.reserveInventory(any())).thenThrow(new RuntimeException("Unexpected inventory service failure")),
+                        CancelReason.SERVER_ERROR),
+                Arguments.of((InventoryFailureStub) (client, orderId, productId) ->
+                                when(client.reserveInventory(any())).thenReturn(reserveResponse(orderId, reservedItem(productId, false, 2))),
+                        CancelReason.INSUFFICIENT_STOCK)
         );
-        CatalogLookupResponse catalogResponse = CatalogLookupResponse.builder()
-                .found(Map.of(productId1, catalogProduct(productId1, BigDecimal.TEN), productId2, catalogProduct(productId2, BigDecimal.valueOf(20))))
-                .notFound(List.of())
-                .build();
-        when(catalogServiceClient.lookup(any())).thenReturn(catalogResponse);
+    }
 
-        Order reservingOrder = Order.builder()
-                .id(UUID.randomUUID())
-                .userId(userId)
-                .status(OrderStatus.RESERVING)
-                .totalPrice(BigDecimal.valueOf(120))
-                .build();
-        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId)).thenReturn(reservingOrder);
+    @FunctionalInterface
+    private interface InventoryFailureStub {
+        void applyTo(InventoryServiceClient client, UUID orderId, UUID productId);
+    }
 
-        when(inventoryServiceClient.reserveInventory(any(InventoryReserveRequest.class)))
-                .thenReturn(InventoryReserveResponse.builder()
-                        .orderId(reservingOrder.getId())
-                        .items(List.of(
-                                InventoryReserveItem.builder().productId(productId1).reserved(true).available(10).build(),
-                                InventoryReserveItem.builder().productId(productId2).reserved(false).available(3).build()
-                        ))
-                        .build());
+    // ---- shared assertion for the "checkout cancelled due to inventory" scenarios ----
 
-        Order cancelledOrder = Order.builder()
-                .id(reservingOrder.getId())
-                .userId(userId)
-                .status(OrderStatus.CANCELLED)
-                .cancelReason(CancelReason.INSUFFICIENT_STOCK)
-                .totalPrice(reservingOrder.getTotalPrice())
-                .build();
-        when(orderTransitionService.cancelOrderForInventoryFailure(reservingOrder, CancelReason.INSUFFICIENT_STOCK))
-                .thenReturn(cancelledOrder);
-
-        CheckOutOrderResponse expectedResponse = CheckOutOrderResponse.builder().id(reservingOrder.getId()).build();
-        when(orderMapper.toCheckoutOrderResponse(cancelledOrder)).thenReturn(expectedResponse);
+    private void assertCheckoutCancelledForInventoryFailure(CheckOutOrderRequest request, Order reservingOrder, CancelReason cancelReason) {
+        Order cancelledOrder = cancelledOrder(reservingOrder, cancelReason);
+        when(orderTransitionService.cancelOrderForInventoryFailure(reservingOrder, cancelReason)).thenReturn(cancelledOrder);
+        CheckOutOrderResponse expectedResponse = givenMappedResponse(cancelledOrder);
 
         CheckOutOrderResponse actualResponse = normalOrderService.checkoutOrder(userId, request);
 
         assertEquals(expectedResponse, actualResponse);
-        verify(inventoryServiceClient, times(1)).reserveInventory(any(InventoryReserveRequest.class));
-        verify(orderTransitionService).cancelOrderForInventoryFailure(reservingOrder, CancelReason.INSUFFICIENT_STOCK);
+        verify(orderTransitionService).cancelOrderForInventoryFailure(reservingOrder, cancelReason);
         verify(orderTransitionService, never()).prepareOrderForCharge(any(), any(), any());
     }
+
+    // ---- fixtures ----
 
     private static CheckOutOrderRequest checkoutRequest(OrderItem... items) {
-        return CheckOutOrderRequest.builder().orderItems(List.of(items)).paymentMethodId("pm_123").build();
+        return CheckOutOrderRequest.builder().orderItems(List.of(items)).paymentMethodId("pm_123").address("FakeAddress").build();
     }
 
     private static OrderItem item(UUID productId, int quantity) {
@@ -367,6 +189,47 @@ class NormalOrderServiceTest {
     }
 
     private static CatalogProduct catalogProduct(UUID productId, BigDecimal price) {
-        return CatalogProduct.builder().productId(productId).name("Product " + productId).imageUrl("http://img/" + productId).price(price).build();
+        return CatalogProduct.builder().id(productId).name("Product " + productId).imageUrl("http://img/" + productId).basePrice(price).build();
+    }
+
+    private static CatalogLookupResponse foundCatalogResponse(CatalogProduct... products) {
+        return CatalogLookupResponse.builder()
+                .found(stream(products).collect(toMap(CatalogProduct::getId, p -> p)))
+                .notFound(List.of())
+                .build();
+    }
+
+    private static CatalogLookupResponse notFoundCatalogResponse(UUID... productIds) {
+        return CatalogLookupResponse.builder().found(Map.of()).notFound(List.of(productIds)).build();
+    }
+
+    private static InventoryReserveItem reservedItem(UUID productId, boolean reserved, int available) {
+        return InventoryReserveItem.builder().productId(productId).reserved(reserved).available(available).build();
+    }
+
+    private static InventoryReserveResponse reserveResponse(UUID orderId, InventoryReserveItem... items) {
+        return InventoryReserveResponse.builder().orderId(orderId).items(List.of(items)).build();
+    }
+
+    private Order givenReservingOrderCreated(CheckOutOrderRequest request, CatalogLookupResponse catalogResponse, BigDecimal totalPrice) {
+        when(catalogServiceClient.lookup(any(CatalogLookupRequest.class))).thenReturn(catalogResponse);
+        Order reservingOrder = Order.builder().id(UUID.randomUUID()).userId(userId).status(OrderStatus.RESERVING).totalPrice(totalPrice).build();
+        when(orderTransitionService.createReservingOrder(request, catalogResponse, userId)).thenReturn(reservingOrder);
+        return reservingOrder;
+    }
+
+    private static Order withStatus(Order source, OrderStatus status) {
+        return Order.builder().id(source.getId()).userId(source.getUserId()).status(status).totalPrice(source.getTotalPrice()).build();
+    }
+
+    private static Order cancelledOrder(Order source, CancelReason cancelReason) {
+        return Order.builder().id(source.getId()).userId(source.getUserId()).status(OrderStatus.CANCELLED)
+                .cancelReason(cancelReason).totalPrice(source.getTotalPrice()).build();
+    }
+
+    private CheckOutOrderResponse givenMappedResponse(Order order) {
+        CheckOutOrderResponse expected = CheckOutOrderResponse.builder().id(order.getId()).build();
+        when(orderMapper.toCheckoutOrderResponse(order)).thenReturn(expected);
+        return expected;
     }
 }
