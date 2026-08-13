@@ -18,6 +18,7 @@ import com.rally.order.messaging.event.inbound.payment.PaymentSucceeded;
 import com.rally.order.model.CancelReason;
 import com.rally.order.model.Order;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -25,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NormalOrderService {
@@ -34,6 +36,7 @@ public class NormalOrderService {
     private final OrderMapper orderMapper;
 
     public CheckOutOrderResponse checkoutOrder(UUID userId, CheckOutOrderRequest orderRequest) {
+        log.info("Checkout requested by user {} for {} item(s)", userId, orderRequest.getOrderItems().size());
         List<UUID> productIds = orderRequest.getOrderItems().stream().map(OrderItem::getProductId).toList();
         // Validate Order Items and retrieve them from Catalog
         CatalogLookupResponse catalogLookupResponse = lookupProducts(productIds);
@@ -43,6 +46,7 @@ public class NormalOrderService {
         try {
             reserveProductQuantities(orderRequest.getOrderItems(), order.getId());
         } catch (Exception e) {
+            log.warn("Inventory reservation failed for order {}", order.getId(), e);
             order = orderTransitionService.cancelOrderForInventoryFailure(order, reasonFrom(e));
             return orderMapper.toCheckoutOrderResponse(order);
         }

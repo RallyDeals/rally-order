@@ -6,12 +6,14 @@ import com.rally.order.messaging.event.inbound.deal.DealSucceeded;
 import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.service.DealOrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DealTopicConsumer implements TopicConsumer{
@@ -27,10 +29,11 @@ public class DealTopicConsumer implements TopicConsumer{
         String eventType = extractType(record);
         if (eventType == null)
             return;
+        log.debug("Received deal event {}", eventType);
         switch(eventType){
             case EventTypes.DEAL_SUCCEEDED -> dealOrderService.handleDealSucceeded((DealSucceeded) record.value());
             case EventTypes.DEAL_FAILED -> dealOrderService.handleDealFailed((DealFailed) record.value());
-            default -> System.out.println("Unhandled deal event type: " + eventType);
+            default -> log.warn("Unhandled deal event type: {}", eventType);
         }
     }
     private String extractType(ConsumerRecord<String, Object> record) {
