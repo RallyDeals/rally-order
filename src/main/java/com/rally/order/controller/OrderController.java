@@ -1,11 +1,14 @@
 package com.rally.order.controller;
 
 import com.rally.order.dto.BriefOrderPageResponse;
+import com.rally.order.dto.BriefSellerOrderPageResponse;
 import com.rally.order.dto.CheckOutOrderRequest;
 import com.rally.order.dto.CheckOutOrderResponse;
 import com.rally.order.dto.DetailedOrderResponse;
+import com.rally.order.dto.DetailedSellerOrderResponse;
 import com.rally.order.service.NormalOrderService;
 import com.rally.order.service.OrderService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -41,4 +44,21 @@ public class OrderController {
         return ResponseEntity.status(200).body(this.orderService.getOrderDetails(userId, id));
     }
 
+    @GetMapping("/sellers/{sellerId}")
+    @RolesAllowed("ROLE_SELLER")
+    public ResponseEntity<BriefSellerOrderPageResponse> getSellerOrders(
+            @PathVariable UUID sellerId,
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit){
+        return ResponseEntity.status(200).body(this.orderService.getSellerOrders(sellerId, status, page, limit));
+    }
+
+    @GetMapping("/sellers/{sellerId}/{orderId}")
+    @RolesAllowed("ROLE_SELLER")
+    public ResponseEntity<DetailedSellerOrderResponse> getSellerOrderDetails(
+            @PathVariable UUID sellerId,
+            @PathVariable UUID orderId){
+        return ResponseEntity.status(200).body(this.orderService.getSellerOrderDetails(sellerId, orderId));
+    }
 }
