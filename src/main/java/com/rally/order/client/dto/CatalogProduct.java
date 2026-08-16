@@ -14,6 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class CatalogProduct {
     private UUID id;
+    private UUID sellerId;
     private String name;
     private String imageUrl;
     private BigDecimal basePrice;

@@ -45,6 +45,7 @@ public class CatalogServiceFakeClientImpl implements CatalogServiceClient {
             } else {
                 found.put(productId, CatalogProduct.builder()
                         .id(productId)
+                        .sellerId(UUID.nameUUIDFromBytes(("seller-" + productId).getBytes()))
                         .name("Fake Product " + productId)
                         .imageUrl("https://picsum.photos/seed/" + productId + "/200")
                         .basePrice(BigDecimal.valueOf(150.0))
