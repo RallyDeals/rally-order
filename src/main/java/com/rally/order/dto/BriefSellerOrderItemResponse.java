@@ -1,4 +1,5 @@
-package com.rally.order.client.dto;
+package com.rally.order.dto;
+
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,13 +10,13 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CatalogProduct {
-    private UUID id;
-    private UUID sellerId;
-    private String name;
-    private String imageUrl;
-    private BigDecimal basePrice;
+@Builder
+public class BriefSellerOrderItemResponse {
+    UUID productId;
+    String productName;
+    String productImageUrl;
+    int quantity;
+    BigDecimal unitPrice;
 }

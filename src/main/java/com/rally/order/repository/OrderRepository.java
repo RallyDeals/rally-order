@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.Query;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
@@ -64,4 +65,18 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("UPDATE Order o SET o.shippingStatus = :newStatus, o.shippingStatusUpdatedAt = CURRENT_TIMESTAMP " +
             "WHERE o.shippingStatus = :oldStatus AND o.shippingStatusUpdatedAt < :threshold")
     int advanceShippingStatus(ShippingStatus oldStatus, ShippingStatus newStatus, OffsetDateTime threshold);
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN o.orderProducts op " +
+            "WHERE op.sellerId = :sellerId AND o.orderType = com.rally.order.model.OrderType.NORMAL " +
+            "AND (:statuses IS NULL OR o.status IN :statuses) " +
+            "AND (:shippingStatus IS NULL OR o.shippingStatus = :shippingStatus)")
+    Page<Order> findOrdersBySellerIdAndFilters(UUID sellerId, List<OrderStatus> statuses, ShippingStatus shippingStatus, Pageable pageable);
+
+    @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.orderProducts op " +
+            "WHERE o.id IN :orderIds AND op.sellerId = :sellerId")
+    List<Order> findByIdsWithSellerItems(List<UUID> orderIds, UUID sellerId);
+
+    @Query("SELECT o FROM Order o JOIN FETCH o.orderProducts op " +
+            "WHERE o.id = :orderId AND op.sellerId = :sellerId AND o.orderType = com.rally.order.model.OrderType.NORMAL")
+    Optional<Order> findByIdAndSellerId(UUID orderId, UUID sellerId);
 }
