@@ -96,7 +96,8 @@ public class OrderService {
         return mapper.toDetailedOrderResponse(order);
     }
 
-    public BriefSellerOrderPageResponse getSellerOrders(UUID sellerId, String statusParam, int page, int limit){
+    public BriefSellerOrderPageResponse getSellerOrders(UUID callerId, String role, UUID sellerId, String statusParam, int page, int limit){
+        requireSeller(callerId, role, sellerId);
         if (page < 1)
             throw new BadRequestException("page must be >= 1");
         if (limit < 1 || limit > MAX_LIMIT)
@@ -125,10 +126,20 @@ public class OrderService {
                 .build();
     }
 
-    public DetailedSellerOrderResponse getSellerOrderDetails(UUID sellerId, UUID orderId){
+    public DetailedSellerOrderResponse getSellerOrderDetails(UUID callerId, String role, UUID sellerId, UUID orderId){
+        requireSeller(callerId, role, sellerId);
         Order order = orderRepository.findByIdAndSellerId(orderId, sellerId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found for ID: " + orderId));
         return toDetailedSellerOrderResponse(order);
+    }
+
+    private void requireSeller(UUID callerId, String role, UUID sellerId) {
+        if (!"SELLER".equalsIgnoreCase(role)) {
+            throw new UnauthorizedException("SELLER role required");
+        }
+        if (!sellerId.equals(callerId)) {
+            throw new UnauthorizedException("User " + callerId + " is not authorized to access seller " + sellerId + "'s orders");
+        }
     }
 
     private CompactedOrderStatus parseCompactedStatus(String compactedStatus){
