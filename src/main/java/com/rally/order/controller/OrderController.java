@@ -8,7 +8,6 @@ import com.rally.order.dto.DetailedOrderResponse;
 import com.rally.order.dto.DetailedSellerOrderResponse;
 import com.rally.order.service.NormalOrderService;
 import com.rally.order.service.OrderService;
-import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -45,20 +44,22 @@ public class OrderController {
     }
 
     @GetMapping("/sellers/{sellerId}")
-    @RolesAllowed("ROLE_SELLER")
     public ResponseEntity<BriefSellerOrderPageResponse> getSellerOrders(
+            @RequestHeader("X-User-Id") UUID callerId,
+            @RequestHeader("X-User-Role") String role,
             @PathVariable UUID sellerId,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit){
-        return ResponseEntity.status(200).body(this.orderService.getSellerOrders(sellerId, status, page, limit));
+        return ResponseEntity.status(200).body(this.orderService.getSellerOrders(callerId, role, sellerId, status, page, limit));
     }
 
     @GetMapping("/sellers/{sellerId}/{orderId}")
-    @RolesAllowed("ROLE_SELLER")
     public ResponseEntity<DetailedSellerOrderResponse> getSellerOrderDetails(
+            @RequestHeader("X-User-Id") UUID callerId,
+            @RequestHeader("X-User-Role") String role,
             @PathVariable UUID sellerId,
             @PathVariable UUID orderId){
-        return ResponseEntity.status(200).body(this.orderService.getSellerOrderDetails(sellerId, orderId));
+        return ResponseEntity.status(200).body(this.orderService.getSellerOrderDetails(callerId, role, sellerId, orderId));
     }
 }
