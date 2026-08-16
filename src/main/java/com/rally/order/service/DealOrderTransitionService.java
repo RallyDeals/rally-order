@@ -40,6 +40,7 @@ class DealOrderTransitionService {
         PaymentMethodDetails cardDetails = paymentServiceClient.getPaymentMethodDetails(eventPayload.userId(), eventPayload.paymentMethodId());
         OrderProduct product = OrderProduct.builder()
                 .productId(eventPayload.productId())
+                .sellerId(catalogProduct != null ? catalogProduct.getSellerId() : null)
                 .quantity(1)
                 .unitPrice(eventPayload.price())
                 .productName(catalogProduct != null ? catalogProduct.getName() : null)

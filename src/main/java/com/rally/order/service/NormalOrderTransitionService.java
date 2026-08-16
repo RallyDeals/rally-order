@@ -42,6 +42,7 @@ class NormalOrderTransitionService {
             CatalogProduct catalogProduct = catalogLookupResponse.getFound().get(item.getProductId());
             return OrderProduct.builder()
                     .productId(item.getProductId())
+                    .sellerId(catalogProduct.getSellerId())
                     .quantity(item.getQuantity())
                     .unitPrice(catalogProduct.getBasePrice())
                     .productName(catalogProduct.getName())
