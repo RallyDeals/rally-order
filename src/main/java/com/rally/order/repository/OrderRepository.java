@@ -69,8 +69,11 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT DISTINCT o FROM Order o JOIN o.orderProducts op " +
             "WHERE op.sellerId = :sellerId AND o.orderType = com.rally.order.model.OrderType.NORMAL " +
             "AND (:statuses IS NULL OR o.status IN :statuses) " +
-            "AND (:shippingStatus IS NULL OR o.shippingStatus = :shippingStatus)")
-    Page<Order> findOrdersBySellerIdAndFilters(UUID sellerId, List<OrderStatus> statuses, ShippingStatus shippingStatus, Pageable pageable);
+            "AND (:shippingStatus IS NULL OR o.shippingStatus = :shippingStatus) " +
+            "AND o.createdAt BETWEEN :startDate AND CURRENT_TIMESTAMP " +
+            "AND (:search IS NULL OR LOWER(op.productName) LIKE CONCAT('%', LOWER(CAST(:search AS string)), '%'))")
+    Page<Order> findOrdersBySellerIdAndFilters(UUID sellerId, List<OrderStatus> statuses, ShippingStatus shippingStatus,
+                                               OffsetDateTime startDate, String search, Pageable pageable);
 
     @Query("SELECT DISTINCT o FROM Order o JOIN FETCH o.orderProducts op " +
             "WHERE o.id IN :orderIds AND op.sellerId = :sellerId")
@@ -79,4 +82,13 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     @Query("SELECT o FROM Order o JOIN FETCH o.orderProducts op " +
             "WHERE o.id = :orderId AND op.sellerId = :sellerId AND o.orderType = com.rally.order.model.OrderType.NORMAL")
     Optional<Order> findByIdAndSellerId(UUID orderId, UUID sellerId);
+
+    @Query("SELECT COUNT(DISTINCT o.id), " +
+            "COUNT(DISTINCT CASE WHEN o.status NOT IN (com.rally.order.model.OrderStatus.CONFIRMED, com.rally.order.model.OrderStatus.CANCELLED) THEN o.id END), " +
+            "COUNT(DISTINCT CASE WHEN o.status = com.rally.order.model.OrderStatus.CONFIRMED AND o.shippingStatus = com.rally.order.model.ShippingStatus.DELIVERED THEN o.id END), " +
+            "COALESCE(SUM(CASE WHEN o.status = com.rally.order.model.OrderStatus.CONFIRMED THEN op.unitPrice * op.quantity ELSE 0 END), 0) " +
+            "FROM Order o JOIN o.orderProducts op " +
+            "WHERE op.sellerId = :sellerId AND o.orderType = com.rally.order.model.OrderType.NORMAL " +
+            "AND o.createdAt BETWEEN :startDate AND CURRENT_TIMESTAMP ")
+    List<Object[]> getSellerOrdersAnalyticsRaw(UUID sellerId, OffsetDateTime startDate);
 }

@@ -1,11 +1,6 @@
 package com.rally.order.controller;
 
-import com.rally.order.dto.BriefOrderPageResponse;
-import com.rally.order.dto.BriefSellerOrderPageResponse;
-import com.rally.order.dto.CheckOutOrderRequest;
-import com.rally.order.dto.CheckOutOrderResponse;
-import com.rally.order.dto.DetailedOrderResponse;
-import com.rally.order.dto.DetailedSellerOrderResponse;
+import com.rally.order.dto.*;
 import com.rally.order.service.NormalOrderService;
 import com.rally.order.service.OrderService;
 import jakarta.validation.Valid;
@@ -49,9 +44,11 @@ public class OrderController {
             @RequestHeader("X-User-Role") String role,
             @PathVariable UUID sellerId,
             @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String search,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit){
-        return ResponseEntity.status(200).body(this.orderService.getSellerOrders(callerId, role, sellerId, status, page, limit));
+        return ResponseEntity.status(200).body(this.orderService.getSellerOrders(callerId, role, sellerId, status, startDate, search, page, limit));
     }
 
     @GetMapping("/sellers/{sellerId}/{orderId}")
@@ -61,5 +58,15 @@ public class OrderController {
             @PathVariable UUID sellerId,
             @PathVariable UUID orderId){
         return ResponseEntity.status(200).body(this.orderService.getSellerOrderDetails(callerId, role, sellerId, orderId));
+    }
+
+    @GetMapping("/sellers/{sellerId}/analytics")
+    public ResponseEntity<SellerOrdersAnalytics> getSellerOrdersAnalytics(
+            @RequestHeader("X-User-Id") UUID callerId,
+            @RequestHeader("X-User-Role") String role,
+            @RequestParam(required = false) String startDate,
+            @PathVariable UUID sellerId
+    ){
+        return ResponseEntity.status(200).body(this.orderService.getSellerOrdersAnalytics(callerId, role, startDate, sellerId));
     }
 }
