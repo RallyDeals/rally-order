@@ -1,8 +1,6 @@
 package com.rally.order.dto;
 
-import com.rally.order.model.OrderStatus;
 import com.rally.order.model.OrderType;
-import com.rally.order.model.ShippingStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -20,6 +18,8 @@ import java.util.UUID;
 public class BriefSellerOrderResponse {
     private UUID orderId;
     private CompactedOrderStatus status;
+    private OrderType type;
     private OffsetDateTime createdAt;
-    private List<BriefSellerOrderItemResponse> items;
+    private List<OrderProductResponse> items;
+    private BigDecimal totalPrice;
 }
