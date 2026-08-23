@@ -38,9 +38,9 @@ public class OrderService {
     private final OrderMapper mapper;
 
     public void handlePaymentFailed(PaymentFailed eventPayload) {
-        Order order = orderRepository.findById(eventPayload.orderId())
+        OrderType orderType = orderRepository.findOrderTypeById(eventPayload.orderId())
                 .orElseThrow(() -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId()));
-        if (order.getOrderType() == OrderType.DEAL)
+        if (orderType == OrderType.DEAL)
             dealOrderService.handlePaymentFailed(eventPayload);
         else
             normalOrderService.handlePaymentFailed(eventPayload);

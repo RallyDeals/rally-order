@@ -1,11 +1,13 @@
 package com.rally.order.client.dto;
 
-import lombok.Builder;
-import lombok.Getter;
+import lombok.*;
 
 import java.util.UUID;
 
 @Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Builder
 public class PaymentMethodDetails {
     private UUID id;

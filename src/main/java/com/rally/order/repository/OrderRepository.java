@@ -18,6 +18,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface OrderRepository extends JpaRepository<Order, UUID> {
+    @Query("SELECT o.orderType FROM Order o WHERE o.id = :orderId")
+    Optional<OrderType> findOrderTypeById(UUID orderId);
+
     @Modifying
     @Query("UPDATE Order o SET o.status = OrderStatus.CANCELLED, o.cancelReason = :cancelReason " +
             "WHERE o.id = :orderId AND o.status = :oldStatus")
