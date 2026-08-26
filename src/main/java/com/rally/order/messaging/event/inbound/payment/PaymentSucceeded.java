@@ -5,5 +5,5 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record PaymentSucceeded(
-        UUID paymentId, UUID orderId, BigDecimal amount, Instant occurredAt) {
+        UUID paymentId, UUID orderId, BigDecimal amount) {
 }

@@ -25,7 +25,7 @@ public class OutboxRelay {
     public void relay(){
         List<OutboxEvent> events = outboxEventRepository.lockNextBatch(OutboxEventStatus.PENDING.name(), BATCH_SIZE);
         for(OutboxEvent event: events){
-            TraceContext.put(event.getCorrelationId(), event.getCausationId(), event.getTraceId());
+            TraceContext.put(event.getCorrelationId());
             try{
                 outboxKafkaSender.send(event).get();
                 event.setStatus(OutboxEventStatus.PUBLISHED);

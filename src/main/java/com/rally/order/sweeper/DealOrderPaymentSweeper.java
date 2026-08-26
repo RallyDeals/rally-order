@@ -34,11 +34,10 @@ public class DealOrderPaymentSweeper {
     public void sweepStalePayments() {
         Instant threshold = Instant.now().minusSeconds(paymentStaleAfterSeconds);
         List<Order> staleOrders = orderRepository.lockStaleOrders(OrderStatus.PENDING_AUTHORIZATION.name(), threshold, batchSize);
-        log.info("Found {} stale orders stuck in PENDING_AUTHORIZATION since {}", staleOrders.size(), threshold);
         for (Order order : staleOrders) {
             log.info("Expiring order {} stuck in PENDING_AUTHORIZATION since {}", order.getId(), order.getStatusUpdatedAt());
             UUID correlationId = UUID.randomUUID();
-            TraceContext.put(correlationId, correlationId, correlationId);
+            TraceContext.put(correlationId);
             try {
                 dealOrderService.cancelStuckPendingAuthorizationOrder(order);
             } finally {

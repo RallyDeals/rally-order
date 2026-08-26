@@ -20,12 +20,9 @@ public class TraceContextFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
         UUID correlationId = uuidHeader(request, KafkaTopics.HEADER_CORRELATION_ID);
-        UUID traceId = uuidHeader(request, KafkaTopics.HEADER_TRACE_ID);
-        UUID causationId = correlationId;
 
-        TraceContext.put(correlationId, causationId, traceId);
+        TraceContext.put(correlationId);
         response.setHeader(KafkaTopics.HEADER_CORRELATION_ID, correlationId.toString());
-        response.setHeader(KafkaTopics.HEADER_TRACE_ID, traceId.toString());
         try {
             filterChain.doFilter(request, response);
         } finally {

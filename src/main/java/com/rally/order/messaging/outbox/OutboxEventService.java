@@ -29,8 +29,6 @@ public class OutboxEventService {
                 .topic(topic)
                 .payload(payload)
                 .correlationId(TraceContext.correlationId())
-                .causationId(TraceContext.causationId())
-                .traceId(TraceContext.traceId())
                 .status(OutboxEventStatus.PENDING)
                 .attempts(0)
                 .createdAt(java.time.OffsetDateTime.now())

@@ -30,10 +30,6 @@ public class OutboxEvent {
     private String topic;
     @Column(nullable = false)
     private UUID correlationId;
-    @Column(nullable = false)
-    private UUID causationId;
-    @Column(nullable = false)
-    private UUID traceId;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;
