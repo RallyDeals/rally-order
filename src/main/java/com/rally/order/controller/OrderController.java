@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -26,11 +27,17 @@ public class OrderController {
     @GetMapping("/my")
     public ResponseEntity<BriefOrderPageResponse> getMyOrders(
             @RequestHeader("X-User-Id") UUID userId,
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String orderType,
+            @RequestParam(required = false) List<String> status,
+            @RequestParam(required = false) String type,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit){
-        return ResponseEntity.status(200).body(this.orderService.getMyOrders(userId, status, orderType, page, limit));
+        return ResponseEntity.status(200).body(this.orderService.getMyOrders(userId, status, type, page, limit));
+    }
+
+    @GetMapping("/my/statistics")
+    public ResponseEntity<BuyerOrdersAnalytics> getMyOrdersAnalytics(
+            @RequestHeader("X-User-Id") UUID userId){
+        return ResponseEntity.status(200).body(this.orderService.getMyOrdersStatistics(userId));
     }
 
     @GetMapping("/{id}")

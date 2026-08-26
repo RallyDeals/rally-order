@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -22,8 +23,12 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -46,16 +51,47 @@ public class OrderService {
             normalOrderService.handlePaymentFailed(eventPayload);
     }
 
-    public BriefOrderPageResponse getMyOrders(UUID userId, String statusParam, String orderTypeParam, int page, int limit) {
+    public BriefOrderPageResponse getMyOrders(UUID userId, List<String> statusParams, String typeParam, int page, int limit) {
         if (page < 1)
             throw new BadRequestException("page must be >= 1");
         if (limit < 1 || limit > MAX_LIMIT)
             throw new BadRequestException("limit must be between 1 and " + MAX_LIMIT);
 
-        OrderStatus status = parseStatus(statusParam);
-        OrderType orderType = parseOrderType(orderTypeParam);
+        OrderType orderTypeParam = parseOrderType(typeParam);
+        List<BuyerFiltrationOrderStatus> statuses = parseBuyerFiltrationStatuses(statusParams);
 
-        Page<Order> result = orderRepository.findByUserIdAndFilters(userId, status, orderType,
+        Specification<Order> spec = (root, query, cb) -> cb.equal(root.get("userId"), userId);
+
+        if (orderTypeParam != null) {
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("orderType"), orderTypeParam));
+        }
+
+        if (statuses != null && !statuses.isEmpty()) {
+            Set<OrderStatus> orderStatuses = EnumSet.noneOf(OrderStatus.class);
+            Set<ShippingStatus> shippingStatuses = EnumSet.noneOf(ShippingStatus.class);
+            for (BuyerFiltrationOrderStatus statusParam : statuses) {
+                Map<String, List<String>> parsed = parseBuyerFiltrationStatus(statusParam);
+                parsed.get("status").forEach(s -> orderStatuses.add(OrderStatus.valueOf(s)));
+                parsed.get("shippingStatus").forEach(s -> shippingStatuses.add(ShippingStatus.valueOf(s)));
+            }
+
+            Specification<Order> statusSpec = orderStatuses.isEmpty() ? null :
+                    (root, query, cb) -> root.get("status").in(orderStatuses);
+            Specification<Order> shippingSpec = shippingStatuses.isEmpty() ? null :
+                    (root, query, cb) -> root.get("shippingStatus").in(shippingStatuses);
+
+            Specification<Order> filterSpec;
+            if (statusSpec != null && shippingSpec != null) {
+                filterSpec = statusSpec.or(shippingSpec);
+            } else if (statusSpec != null) {
+                filterSpec = statusSpec;
+            } else {
+                filterSpec = shippingSpec;
+            }
+            spec = spec.and(filterSpec);
+        }
+
+        Page<Order> result = orderRepository.findAll(spec,
                 PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "createdAt")));
 
         return BriefOrderPageResponse.builder()
@@ -64,26 +100,60 @@ public class OrderService {
                 .limit(limit)
                 .total(result.getTotalElements())
                 .build();
+
     }
 
-    private OrderStatus parseStatus(String statusParam) {
-        if (statusParam == null)
+    public BuyerOrdersAnalytics getMyOrdersStatistics(UUID userId) {
+        Object[] row = orderRepository.getBuyerOrdersAnalyticsRaw(userId);
+
+        return BuyerOrdersAnalytics.builder()
+                .deliveredOrders(Math.toIntExact((Long) row[0]))
+                .cancelledOrders(Math.toIntExact((Long) row[1]))
+                .pendingDelivery(Math.toIntExact((Long) row[2]))
+                .pendingPayment(Math.toIntExact((Long) row[3]))
+                .build();
+    }
+
+    private OrderType parseOrderType(String typeParam) {
+        if (typeParam == null || typeParam.isBlank())
             return null;
         try {
-            return OrderStatus.valueOf(statusParam.toUpperCase());
+            return OrderType.valueOf(typeParam.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid status filter value: " + statusParam);
+            throw new BadRequestException("Invalid type filter value: " + typeParam +
+                    ". Expected one of " + Arrays.toString(OrderType.values()));
         }
     }
 
-    private OrderType parseOrderType(String orderTypeParam) {
-        if (orderTypeParam == null)
+    private List<BuyerFiltrationOrderStatus> parseBuyerFiltrationStatuses(List<String> statusParams) {
+        if (statusParams == null || statusParams.isEmpty())
             return null;
-        try {
-            return OrderType.valueOf(orderTypeParam.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("Invalid orderType filter value: " + orderTypeParam);
-        }
+        return statusParams.stream().map(statusParam -> {
+            try {
+                return BuyerFiltrationOrderStatus.valueOf(statusParam.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Invalid status filter value: " + statusParam +
+                        ". Expected one of " + Arrays.toString(BuyerFiltrationOrderStatus.values()));
+            }
+        }).toList();
+    }
+
+    private Map<String, List<String>> parseBuyerFiltrationStatus(BuyerFiltrationOrderStatus statusParam) {
+        List<String> o = switch (statusParam) {
+            case PENDING_PAYMENT ->
+                    List.of(OrderStatus.PENDING_CAPTURE.name(), OrderStatus.PENDING_CHARGE.name(), OrderStatus.PENDING_AUTHORIZATION.name(), OrderStatus.PENDING_VOID.name());
+            case CANCELLED -> List.of(OrderStatus.CANCELLED.name());
+            default -> List.of();
+        };
+        List<String> s = switch (statusParam) {
+            case PENDING_DELIVERY -> List.of(ShippingStatus.SHIPPING.name(), ShippingStatus.PROCESSING.name());
+            case DELIVERED -> List.of(ShippingStatus.DELIVERED.name());
+            default -> List.of();
+        };
+        return new HashMap<>() {{
+            put("status", o);
+            put("shippingStatus", s);
+        }};
     }
 
     public DetailedOrderResponse getOrderDetails(UUID userId, UUID orderId) {
@@ -95,7 +165,8 @@ public class OrderService {
         return mapper.toDetailedOrderResponse(order);
     }
 
-    public BriefSellerOrderPageResponse getSellerOrders(UUID callerId, String role, UUID sellerId, String statusParam, String startDate, String search, int page, int limit) {
+    public BriefSellerOrderPageResponse getSellerOrders(UUID callerId, String role, UUID sellerId, String
+            statusParam, String startDate, String search, int page, int limit) {
         requireSeller(callerId, role, sellerId);
         if (page < 1)
             throw new BadRequestException("page must be >= 1");
@@ -127,14 +198,16 @@ public class OrderService {
                 .build();
     }
 
-    public DetailedSellerOrderResponse getSellerOrderDetails(UUID callerId, String role, UUID sellerId, UUID orderId) {
+    public DetailedSellerOrderResponse getSellerOrderDetails(UUID callerId, String role, UUID sellerId, UUID
+            orderId) {
         requireSeller(callerId, role, sellerId);
         Order order = orderRepository.findByIdAndSellerId(orderId, sellerId)
                 .orElseThrow(() -> new OrderNotFoundException("Order not found for ID: " + orderId));
         return mapper.toDetailedSellerOrderResponse(order, mapper.toOrderProductResponses(order.getOrderProducts()));
     }
 
-    public SellerOrdersAnalytics getSellerOrdersAnalytics(UUID callerId, String role, String startDate, UUID sellerId) {
+    public SellerOrdersAnalytics getSellerOrdersAnalytics(UUID callerId, String role, String startDate, UUID
+            sellerId) {
         requireSeller(callerId, role, sellerId);
         OffsetDateTime parsedStartDate = parseStartDate(startDate);
         List<Object[]> rows = orderRepository.getSellerOrdersAnalyticsRaw(sellerId, parsedStartDate);
