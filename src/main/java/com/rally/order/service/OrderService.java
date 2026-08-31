@@ -104,14 +104,18 @@ public class OrderService {
     }
 
     public BuyerOrdersAnalytics getMyOrdersStatistics(UUID userId) {
-        Object[] row = orderRepository.getBuyerOrdersAnalyticsRaw(userId);
+        Object[] row = orderRepository.getBuyerOrdersAnalyticsRaw(userId).get(0);
 
         return BuyerOrdersAnalytics.builder()
-                .deliveredOrders(Math.toIntExact((Long) row[0]))
-                .cancelledOrders(Math.toIntExact((Long) row[1]))
-                .pendingDelivery(Math.toIntExact((Long) row[2]))
-                .pendingPayment(Math.toIntExact((Long) row[3]))
+                .deliveredOrders(toInt(row[0]))
+                .cancelledOrders(toInt(row[1]))
+                .pendingDelivery(toInt(row[2]))
+                .pendingPayment(toInt(row[3]))
                 .build();
+    }
+
+    private Integer toInt(Object value) {
+        return value == null ? 0 : ((Number) value).intValue();
     }
 
     private OrderType parseOrderType(String typeParam) {

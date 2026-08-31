@@ -108,7 +108,7 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
             "com.rally.order.model.ShippingStatus.SHIPPING" +
             ") THEN 1 END) " +
             "FROM Order o WHERE o.userId = :userId")
-    Object[] getBuyerOrdersAnalyticsRaw(UUID userId);
+    List<Object[]> getBuyerOrdersAnalyticsRaw(UUID userId);
 
     List<Order> findByUserId(UUID userId);
 }
