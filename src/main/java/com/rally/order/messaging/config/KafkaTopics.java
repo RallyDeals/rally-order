@@ -8,7 +8,7 @@ public final class KafkaTopics {
     // Consumed by order service
     public static final String PAYMENT = "payment.events";
     public static final String PARTICIPATION = "participation";
-    public static final String DEAL = "deal";
+    public static final String DEAL = "deal-events";
 
     // Published by order service
     public static final String ORDER_PAYMENTS = "order.payments_requested";
@@ -18,6 +18,4 @@ public final class KafkaTopics {
     public static final String HEADER_EVENT_ID = "X-Id";
     public static final String HEADER_EVENT_TYPE = "X-Type";
     public static final String HEADER_CORRELATION_ID = "X-Correlation-Id";
-    public static final String HEADER_CAUSATION_ID = "X-Causation-Id";
-    public static final String HEADER_TRACE_ID = "X-Trace-Id";
 }

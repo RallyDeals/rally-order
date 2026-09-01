@@ -38,6 +38,7 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -90,7 +91,7 @@ class DealOrderTransitionServiceTest {
     @Test
     void handleParticipantJoined_withCatalogProduct_savesOrderWithSnapshotAndPublishesAuthorizeRequired() {
         UUID productId = UUID.randomUUID();
-        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St");
+        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St", Instant.parse("2026-08-22T10:15:30Z"));
         CatalogProduct catalogProduct = CatalogProduct.builder().id(productId).name("Widget").imageUrl("http://img/widget.png").basePrice(BigDecimal.valueOf(50)).build();
         when(paymentServiceClient.getPaymentMethodDetails(userId, "pm_123")).thenReturn(
                 PaymentMethodDetails.builder().cardLast4("4242").cardBrand("visa").cardExpMonth("12").cardExpYear("2030").build());
@@ -137,7 +138,7 @@ class DealOrderTransitionServiceTest {
     @Test
     void handleParticipantJoined_withNullCatalogProduct_leavesProductNameAndImageNull() {
         UUID productId = UUID.randomUUID();
-        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St");
+        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St", Instant.parse("2026-08-22T10:15:30Z"));
         when(paymentServiceClient.getPaymentMethodDetails(userId, "pm_123")).thenReturn(
                 PaymentMethodDetails.builder().cardLast4("4242").cardBrand("visa").cardExpMonth("12").cardExpYear("2030").build());
         when(orderRepository.save(any(Order.class))).thenAnswer(inv -> inv.getArgument(0));
@@ -154,7 +155,7 @@ class DealOrderTransitionServiceTest {
     @Test
     void handleParticipantJoined_whenPaymentMethodDetailsRetrievalFails_propagatesExceptionWithoutSavingOrder() {
         UUID productId = UUID.randomUUID();
-        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St");
+        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St", Instant.parse("2026-08-22T10:15:30Z"));
         CatalogProduct catalogProduct = CatalogProduct.builder().id(productId).name("Widget").imageUrl("http://img/widget.png").basePrice(BigDecimal.valueOf(50)).build();
         when(paymentServiceClient.getPaymentMethodDetails(userId, "pm_123"))
                 .thenThrow(new ServiceUnavailableException("Payment service is unavailable"));
@@ -177,7 +178,7 @@ class DealOrderTransitionServiceTest {
 
         transitionService.handleFailedAuthorization(event);
 
-        verify(dealServiceClient).releaseSlot(dealId);
+        verify(dealServiceClient).releaseSlot(dealId, orderId);
         ArgumentCaptor<DealOrderCancelled> eventCaptor = ArgumentCaptor.forClass(DealOrderCancelled.class);
         verify(outboxEventService).publish(eq("Order"), eq(orderId), eq(EventTypes.ORDER_DEAL_CANCELLED), eq(KafkaTopics.ORDER_EVENTS), eventCaptor.capture());
         assertEquals(CancelReason.PAYMENT_DECLINED, eventCaptor.getValue().reason());
@@ -186,21 +187,22 @@ class DealOrderTransitionServiceTest {
     @Test
     void handleFailedAuthorization_whenRaceLost_doesNothing() {
         PaymentFailed event = new PaymentFailed(paymentId, orderId, BigDecimal.valueOf(50), "card_declined", "402");
-        Order order = Order.builder().id(orderId).build();
-        when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
         when(orderRepository.updateStatusToCancelledWithPaymentIfCurrent(orderId, OrderStatus.PENDING_AUTHORIZATION, CancelReason.PAYMENT_DECLINED, paymentId))
                 .thenReturn(0);
+        when(orderRepository.existsById(orderId)).thenReturn(true);
 
         transitionService.handleFailedAuthorization(event);
 
-        verify(dealServiceClient, never()).releaseSlot(any());
+        verify(dealServiceClient, never()).releaseSlot(any(), any());
         verifyNoInteractions(paymentServiceClient, outboxEventService);
     }
 
     @Test
     void handleFailedAuthorization_whenOrderNotFound_throwsOrderNotFoundException() {
         PaymentFailed event = new PaymentFailed(paymentId, orderId, BigDecimal.valueOf(50), "card_declined", "402");
-        when(orderRepository.findById(orderId)).thenReturn(Optional.empty());
+        when(orderRepository.updateStatusToCancelledWithPaymentIfCurrent(orderId, OrderStatus.PENDING_AUTHORIZATION, CancelReason.PAYMENT_DECLINED, paymentId))
+                .thenReturn(0);
+        when(orderRepository.existsById(orderId)).thenReturn(false);
 
         assertThrows(OrderNotFoundException.class, () -> transitionService.handleFailedAuthorization(event));
     }
@@ -249,7 +251,7 @@ class DealOrderTransitionServiceTest {
         Order order = Order.builder().id(orderId).userId(userId).dealId(dealId).build();
         when(orderRepository.updateStatusWithPaymentIfCurrent(orderId, OrderStatus.PENDING_AUTHORIZATION, OrderStatus.AUTHORIZED, paymentId)).thenReturn(1);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(dealServiceClient.authorizeSlot(dealId)).thenReturn(true);
+        when(dealServiceClient.authorizeSlot(dealId, orderId)).thenReturn(true);
 
         transitionService.handlePaymentAuthorized(event);
 
@@ -266,13 +268,13 @@ class DealOrderTransitionServiceTest {
         Order order = Order.builder().id(orderId).userId(userId).dealId(dealId).paymentId(paymentId).build();
         when(orderRepository.updateStatusWithPaymentIfCurrent(orderId, OrderStatus.PENDING_AUTHORIZATION, OrderStatus.AUTHORIZED, paymentId)).thenReturn(1);
         when(orderRepository.findById(orderId)).thenReturn(Optional.of(order));
-        when(dealServiceClient.authorizeSlot(dealId)).thenReturn(false);
+        when(dealServiceClient.authorizeSlot(dealId, orderId)).thenReturn(false);
         when(orderRepository.updateStatusToPendingVoidIfCurrent(orderId, OrderStatus.AUTHORIZED, CancelReason.DEAL_RESOLVED)).thenReturn(1);
 
         transitionService.handlePaymentAuthorized(event);
 
-        verify(dealServiceClient).releaseSlot(dealId);
-        verify(dealServiceClient, never()).releaseAuthorizedSlot(any());
+        verify(dealServiceClient).releaseSlot(dealId, orderId);
+        verify(dealServiceClient, never()).releaseAuthorizedSlot(any(), any());
         ArgumentCaptor<PaymentVoidRequired> eventCaptor = ArgumentCaptor.forClass(PaymentVoidRequired.class);
         verify(outboxEventService).publish(eq("Order"), eq(orderId), eq(EventTypes.ORDER_PAYMENT_VOID_REQUESTED), eq(KafkaTopics.ORDER_PAYMENTS), eventCaptor.capture());
         verify(outboxEventService, never()).publish(eq("Order"), any(), eq(EventTypes.ORDER_AUTHORIZED), any(), any());
@@ -333,7 +335,7 @@ class DealOrderTransitionServiceTest {
 
         transitionService.handlePaymentVoided(event);
 
-        verify(dealServiceClient).releaseAuthorizedSlot(dealId);
+        verify(dealServiceClient).releaseAuthorizedSlot(dealId, orderId);
         ArgumentCaptor<DealOrderCancelled> eventCaptor = ArgumentCaptor.forClass(DealOrderCancelled.class);
         verify(outboxEventService).publish(eq("Order"), eq(orderId), eq(EventTypes.ORDER_DEAL_CANCELLED), eq(KafkaTopics.ORDER_EVENTS), eventCaptor.capture());
         assertEquals(CancelReason.PARTICIPANT_LEFT, eventCaptor.getValue().reason());
@@ -349,7 +351,7 @@ class DealOrderTransitionServiceTest {
 
         transitionService.handlePaymentVoided(event);
 
-        verify(dealServiceClient, never()).releaseAuthorizedSlot(any());
+        verify(dealServiceClient, never()).releaseAuthorizedSlot(any(), any());
         ArgumentCaptor<DealOrderCancelled> eventCaptor = ArgumentCaptor.forClass(DealOrderCancelled.class);
         verify(outboxEventService).publish(eq("Order"), eq(orderId), eq(EventTypes.ORDER_DEAL_CANCELLED), eq(KafkaTopics.ORDER_EVENTS), eventCaptor.capture());
         assertEquals(CancelReason.DEAL_FAILED, eventCaptor.getValue().reason());
@@ -422,7 +424,7 @@ class DealOrderTransitionServiceTest {
 
         transitionService.cancelOrderForPaymentTimeout(order);
 
-        verify(dealServiceClient).releaseSlot(dealId);
+        verify(dealServiceClient).releaseSlot(dealId, orderId);
         ArgumentCaptor<Object> payloadCaptor = ArgumentCaptor.forClass(Object.class);
         verify(outboxEventService, org.mockito.Mockito.times(2)).publish(eq("Order"), eq(orderId), any(), any(), payloadCaptor.capture());
         assertTrue(payloadCaptor.getAllValues().stream().anyMatch(p -> p instanceof DealOrderCancelled));

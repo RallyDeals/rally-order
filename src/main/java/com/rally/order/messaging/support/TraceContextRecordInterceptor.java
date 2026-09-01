@@ -11,8 +11,6 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import static com.rally.order.messaging.config.KafkaTopics.HEADER_CORRELATION_ID;
-import static com.rally.order.messaging.config.KafkaTopics.HEADER_EVENT_ID;
-import static com.rally.order.messaging.config.KafkaTopics.HEADER_TRACE_ID;
 
 @Component
 public class TraceContextRecordInterceptor implements RecordInterceptor<String, Object> {
@@ -21,10 +19,8 @@ public class TraceContextRecordInterceptor implements RecordInterceptor<String, 
     public ConsumerRecord<String, Object> intercept(ConsumerRecord<String, Object> record, Consumer<String, Object> consumer) {
         Supplier<UUID> fallback = UUID::randomUUID;
         UUID correlationId = headerUuid(record, HEADER_CORRELATION_ID, fallback);
-        UUID traceId = headerUuid(record, HEADER_TRACE_ID, fallback);
-        UUID causationId = headerUuid(record, HEADER_EVENT_ID, fallback);
 
-        TraceContext.put(correlationId, causationId, traceId);
+        TraceContext.put(correlationId);
         return record;
     }
 

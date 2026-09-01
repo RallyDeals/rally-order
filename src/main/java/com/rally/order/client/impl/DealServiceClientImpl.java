@@ -8,12 +8,16 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Slf4j
@@ -27,11 +31,12 @@ public class DealServiceClientImpl implements DealServiceClient {
     private String dealServiceUrl;
 
     @Override
-    public boolean authorizeSlot(UUID dealId) {
-        String url = dealServiceUrl + "deals/" + dealId + "/authorize-slot";
+    public boolean authorizeSlot(UUID dealId, UUID orderId) {
+        String url = dealServiceUrl + "/deals/" + dealId + "/authorize-slot";
+        HttpEntity<Void> requestEntity = requestEntity("authorize-slot", orderId);
 
         try{
-            ResponseEntity<Void> response = restTemplate.postForEntity(url, null, Void.class);
+            ResponseEntity<Void> response = restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
             return response.getStatusCode().is2xxSuccessful();
         } catch (ResourceAccessException resourceAccessException) {
             log.warn("Deal service unavailable calling {}", url, resourceAccessException);
@@ -43,11 +48,12 @@ public class DealServiceClientImpl implements DealServiceClient {
     }
 
     @Override
-    public void releaseSlot(UUID dealId) {
-        String url = dealServiceUrl + "deals/" + dealId + "/release-slot";
+    public void releaseSlot(UUID dealId, UUID orderId) {
+        String url = dealServiceUrl + "/deals/" + dealId + "/release-slot";
+        HttpEntity<Void> requestEntity = requestEntity("release-slot", orderId);
 
         try{
-            restTemplate.postForEntity(url, null, Void.class);
+            restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
         } catch (ResourceAccessException resourceAccessException) {
             log.warn("Deal service unavailable calling {}", url, resourceAccessException);
             throw new ServiceUnavailableException("Deal service is unavailable");
@@ -58,11 +64,12 @@ public class DealServiceClientImpl implements DealServiceClient {
     }
 
     @Override
-    public void releaseAuthorizedSlot(UUID dealId) {
-        String url = dealServiceUrl + "deals/" + dealId + "/release-authorized-slot";
+    public void releaseAuthorizedSlot(UUID dealId, UUID orderId) {
+        String url = dealServiceUrl + "/deals/" + dealId + "/release-authorized-slot";
+        HttpEntity<Void> requestEntity = requestEntity("release-authorized-slot", orderId);
 
         try{
-            restTemplate.postForEntity(url, null, Void.class);
+            restTemplate.exchange(url, HttpMethod.POST, requestEntity, Void.class);
         } catch (ResourceAccessException resourceAccessException) {
             log.warn("Deal service unavailable calling {}", url, resourceAccessException);
             throw new ServiceUnavailableException("Deal service is unavailable");
@@ -70,5 +77,12 @@ public class DealServiceClientImpl implements DealServiceClient {
             log.warn("Deal service returned server error calling {}", url, serverErrorException);
             throw new InternalServerErrorException("Deal service returned server error");
         }
+    }
+
+    private HttpEntity<Void> requestEntity(String operation, UUID orderId) {
+        UUID requestId = UUID.nameUUIDFromBytes((operation + ":" + orderId).getBytes(StandardCharsets.UTF_8));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("requestId", requestId.toString());
+        return new HttpEntity<>(headers);
     }
 }

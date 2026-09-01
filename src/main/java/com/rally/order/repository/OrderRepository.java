@@ -8,6 +8,7 @@ import com.rally.order.model.ShippingStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
@@ -17,7 +18,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface OrderRepository extends JpaRepository<Order, UUID> {
+public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecificationExecutor<Order> {
+    @Query("SELECT o.orderType FROM Order o WHERE o.id = :orderId")
+    Optional<OrderType> findOrderTypeById(UUID orderId);
+
     @Modifying
     @Query("UPDATE Order o SET o.status = OrderStatus.CANCELLED, o.cancelReason = :cancelReason " +
             "WHERE o.id = :orderId AND o.status = :oldStatus")
@@ -50,11 +54,6 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
     List<Order> findOrdersByDealIdAndStatus(UUID dealId, OrderStatus status);
 
     Order findOrderByDealIdAndParticipantId(UUID dealId, UUID participantId);
-
-    @Query("SELECT o FROM Order o WHERE o.userId = :userId " +
-            "AND (:status IS NULL OR o.status = :status) " +
-            "AND (:orderType IS NULL OR o.orderType = :orderType)")
-    Page<Order> findByUserIdAndFilters(UUID userId, OrderStatus status, OrderType orderType, Pageable pageable);
 
     @Modifying
     @Query("UPDATE Order o SET o.shippingStatus = ShippingStatus.PROCESSING, o.shippingStatusUpdatedAt = CURRENT_TIMESTAMP " +
@@ -91,4 +90,25 @@ public interface OrderRepository extends JpaRepository<Order, UUID> {
             "WHERE op.sellerId = :sellerId AND o.orderType = com.rally.order.model.OrderType.NORMAL " +
             "AND o.createdAt BETWEEN :startDate AND CURRENT_TIMESTAMP ")
     List<Object[]> getSellerOrdersAnalyticsRaw(UUID sellerId, OffsetDateTime startDate);
+
+
+    @Query("SELECT " +
+            "COUNT(CASE WHEN o.status = com.rally.order.model.OrderStatus.CONFIRMED " +
+            "AND o.shippingStatus = com.rally.order.model.ShippingStatus.DELIVERED THEN 1 END), " +
+            "COUNT(CASE WHEN o.status = com.rally.order.model.OrderStatus.CANCELLED THEN 1 END), " +
+            "COUNT(CASE WHEN o.status IN (" +
+            "com.rally.order.model.OrderStatus.PENDING_CHARGE, " +
+            "com.rally.order.model.OrderStatus.PENDING_AUTHORIZATION, " +
+            "com.rally.order.model.OrderStatus.PENDING_CAPTURE, " +
+            "com.rally.order.model.OrderStatus.PENDING_VOID" +
+            ") THEN 1 END), " +
+            "COUNT(CASE WHEN o.status = com.rally.order.model.OrderStatus.CONFIRMED " +
+            "AND o.shippingStatus IN (" +
+            "com.rally.order.model.ShippingStatus.PROCESSING, " +
+            "com.rally.order.model.ShippingStatus.SHIPPING" +
+            ") THEN 1 END) " +
+            "FROM Order o WHERE o.userId = :userId")
+    List<Object[]> getBuyerOrdersAnalyticsRaw(UUID userId);
+
+    List<Order> findByUserId(UUID userId);
 }

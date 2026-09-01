@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -58,7 +59,7 @@ class DealOrderServiceTest {
 
     @Test
     void handleParticipationJoin_whenCatalogLookupSucceeds_passesResolvedProductToTransitionService() {
-        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St");
+        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St", Instant.parse("2024-01-01T00:00:00Z"));
         CatalogProduct catalogProduct = CatalogProduct.builder().id(productId).name("Widget").imageUrl("http://img").basePrice(BigDecimal.valueOf(50)).build();
         when(catalogServiceClient.lookup(any(CatalogLookupRequest.class)))
                 .thenReturn(CatalogLookupResponse.builder().found(Map.of(productId, catalogProduct)).notFound(List.of()).build());
@@ -73,7 +74,7 @@ class DealOrderServiceTest {
 
     @Test
     void handleParticipationJoin_whenCatalogLookupThrows_proceedsWithNullProductSnapshot() {
-        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St");
+        ParticipantJoined event = new ParticipantJoined(participantId, dealId, userId, productId, BigDecimal.valueOf(50), "pm_123", "123 Main St", Instant.parse("2024-01-01T00:00:00Z"));
         when(catalogServiceClient.lookup(any(CatalogLookupRequest.class))).thenThrow(new RuntimeException("Catalog service is unavailable"));
 
         dealOrderService.handleParticipationJoin(event);

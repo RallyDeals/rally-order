@@ -36,11 +36,10 @@ public class NormalOrderReservationSweeper {
     void checkReservingStuck() {
         Instant threshold = Instant.now().minusSeconds(staleAfterSeconds);
         List<Order> staleOrders = orderRepository.lockStaleOrders(OrderStatus.RESERVING.name(), threshold, batchSize);
-        log.info("Found {} stale orders stuck in RESERVING since {}", staleOrders.size(), threshold);
         for (Order order : staleOrders) {
             log.info("Expiring order {} stuck in RESERVING since {}", order.getId(), order.getStatusUpdatedAt());
             UUID correlationId = UUID.randomUUID();
-            TraceContext.put(correlationId, correlationId, correlationId);
+            TraceContext.put(correlationId);
             try {
                 normalOrderService.expireStuckReservation(order);
             } finally {

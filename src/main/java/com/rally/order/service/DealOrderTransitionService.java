@@ -78,19 +78,23 @@ class DealOrderTransitionService {
 
     @Transactional
     void handleFailedAuthorization(PaymentFailed eventPayload){
-        Order order = orderRepository.findById(eventPayload.orderId())
-                .orElseThrow(() -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId()));
         int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(
-                order.getId(),
+                eventPayload.orderId(),
                 OrderStatus.PENDING_AUTHORIZATION,
                 CancelReason.PAYMENT_DECLINED,
                 eventPayload.paymentId()
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            if (!orderRepository.existsById(eventPayload.orderId()))
+                throw new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId());
+            return;
+        }
+        Order order = orderRepository.findById(eventPayload.orderId())
+                .orElseThrow(() -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId()));
         order.setPaymentErrorCode(eventPayload.errorCode());
         order.setPaymentErrorMessage(eventPayload.errorMessage());
         log.info("Order {} cancelled, reason=PAYMENT_DECLINED", order.getId());
-        dealServiceClient.releaseSlot(order.getDealId());
+        dealServiceClient.releaseSlot(order.getDealId(), order.getId());
         publishDealOrderCancelled(order, CancelReason.PAYMENT_DECLINED);
     }
 
@@ -121,7 +125,7 @@ class DealOrderTransitionService {
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );
-        boolean slotClaimed = dealServiceClient.authorizeSlot(order.getDealId());
+        boolean slotClaimed = dealServiceClient.authorizeSlot(order.getDealId(), order.getId());
         if (!slotClaimed) {
             log.info("Order {} authorized but deal slot no longer claimable, cancelling", order.getId());
             cancelOrderForLateAuthorization(order);
@@ -150,7 +154,7 @@ class DealOrderTransitionService {
         );
         if (updated == 0) return;
         log.info("Order {} moved to PENDING_VOID, reason=DEAL_RESOLVED", order.getId());
-        dealServiceClient.releaseSlot(order.getDealId());
+        dealServiceClient.releaseSlot(order.getDealId(), order.getId());
         publishPaymentVoidRequired(order);
     }
 
@@ -196,7 +200,7 @@ class DealOrderTransitionService {
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );
         if (order.getCancelReason() == CancelReason.PARTICIPANT_LEFT)
-            dealServiceClient.releaseAuthorizedSlot(order.getDealId());
+            dealServiceClient.releaseAuthorizedSlot(order.getDealId(), order.getId());
         log.info("Order {} cancelled, reason={}", order.getId(), order.getCancelReason());
         publishDealOrderCancelled(order, order.getCancelReason());
     }
@@ -244,7 +248,7 @@ class DealOrderTransitionService {
         if (updated == 0)
             return;
         log.info("Order {} cancelled, reason=PAYMENT_TIMEOUT", order.getId());
-        dealServiceClient.releaseSlot(order.getDealId());
+        dealServiceClient.releaseSlot(order.getDealId(), order.getId());
         publishDealOrderCancelled(order, CancelReason.PAYMENT_TIMEOUT);
         publishPaymentTimeout(order);
     }
