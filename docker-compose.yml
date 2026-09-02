@@ -39,6 +39,23 @@ services:
     networks:
       - rally-network
 
+  akhq:
+    image: tchiotludo/akhq
+    container_name: akhq
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            rally-order:
+              properties:
+                bootstrap.servers: "broker:29092"
+    ports:
+      - "8070:8080"
+    depends_on:
+      - broker
+    networks:
+      - rally-network
+
   postgres:
     image: postgres:16-alpine
     container_name: rally_postgres
@@ -52,29 +69,41 @@ services:
       - pgdata:/var/lib/postgresql/data
     networks:
       - rally-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d catalog_db" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
-#  order-service:
-#    build:
-#      context: ../rally-order
-#      dockerfile: Dockerfile
-#      secrets:
-#        - gh_username
-#        - gh_token
-#    container_name: order_service
-#    env_file:
-#      - .env
-#    environment:
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/order_db
-#      SPRING_DATASOURCE_USERNAME: user
-#      SPRING_DATASOURCE_PASSWORD: password
-#      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:29092
-#    ports:
-#      - "8081:8081"
-#    depends_on:
-#      - postgres
-#      - broker
-#    networks:
-#      - rally-network
+  order-service:
+    build:
+      context: .
+      secrets:
+        - gh_actor
+        - gh_token
+    container_name: order_service
+    env_file:
+      - .env
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: order_db
+      DB_USER: user
+      DB_PASSWORD: password
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: broker:29092
+      CATALOG_SERVICE_URL: http://host.docker.internal:8083/internal
+      INVENTORY_SERVICE_URL: http://host.docker.internal:8087
+      DEAL_SERVICE_URL: http://host.docker.internal:8085/internal
+      PAYMENT_SERVICE_URL: http://host.docker.internal:8082
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "8081:8081"
+    depends_on:
+      - postgres
+      - broker
+    networks:
+      - rally-network
 
 networks:
   rally-network:
@@ -84,7 +113,7 @@ volumes:
   pgdata:
 
 secrets:
-  gh_username:
-    environment: GH_USERNAME
+  gh_actor:
+    environment: GITHUB_ACTOR
   gh_token:
     environment: GITHUB_TOKEN
