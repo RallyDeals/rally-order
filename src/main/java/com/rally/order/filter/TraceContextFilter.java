@@ -6,6 +6,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -13,6 +14,7 @@ import java.io.IOException;
 import java.util.UUID;
 
 
+@Slf4j
 @Component
 public class TraceContextFilter extends OncePerRequestFilter {
 
@@ -23,9 +25,12 @@ public class TraceContextFilter extends OncePerRequestFilter {
 
         TraceContext.put(correlationId);
         response.setHeader(KafkaTopics.HEADER_CORRELATION_ID, correlationId.toString());
+        long startNanos = System.nanoTime();
         try {
             filterChain.doFilter(request, response);
         } finally {
+            log.info("{} {} -> {} ({} ms)", request.getMethod(), request.getRequestURI(),
+                    response.getStatus(), (System.nanoTime() - startNanos) / 1_000_000);
             TraceContext.clear();
         }
     }

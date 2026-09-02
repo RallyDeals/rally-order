@@ -1,5 +1,6 @@
 package com.rally.order.messaging.support;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -12,6 +13,7 @@ import java.util.function.Supplier;
 
 import static com.rally.order.messaging.config.KafkaTopics.HEADER_CORRELATION_ID;
 
+@Slf4j
 @Component
 public class TraceContextRecordInterceptor implements RecordInterceptor<String, Object> {
 
@@ -21,6 +23,8 @@ public class TraceContextRecordInterceptor implements RecordInterceptor<String, 
         UUID correlationId = headerUuid(record, HEADER_CORRELATION_ID, fallback);
 
         TraceContext.put(correlationId);
+        log.info("Consumed record from topic {} partition {} offset {} key {}",
+                record.topic(), record.partition(), record.offset(), record.key());
         return record;
     }
 
