@@ -109,8 +109,8 @@ public class OrderService {
         return BuyerOrdersAnalytics.builder()
                 .deliveredOrders(toInt(row[0]))
                 .cancelledOrders(toInt(row[1]))
-                .pendingDelivery(toInt(row[2]))
-                .pendingPayment(toInt(row[3]))
+                .pendingPayment(toInt(row[2]))
+                .pendingDelivery(toInt(row[3]))
                 .build();
     }
 
