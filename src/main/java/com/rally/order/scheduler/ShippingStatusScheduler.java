@@ -29,11 +29,15 @@ public class ShippingStatusScheduler {
         OffsetDateTime processingThreshold = OffsetDateTime.now().minusSeconds(processingDurationSeconds);
         int advancedToShipping = orderRepository.advanceShippingStatus(
                 ShippingStatus.PROCESSING, ShippingStatus.SHIPPING, processingThreshold);
-        log.info("Advanced {} orders from PROCESSING to SHIPPING", advancedToShipping);
+        if (advancedToShipping > 0) {
+            log.info("Advanced {} orders from PROCESSING to SHIPPING", advancedToShipping);
+        }
 
         OffsetDateTime shippingThreshold = OffsetDateTime.now().minusSeconds(shippingDurationSeconds);
         int advancedToDelivered = orderRepository.advanceShippingStatus(
                 ShippingStatus.SHIPPING, ShippingStatus.DELIVERED, shippingThreshold);
-        log.info("Advanced {} orders from SHIPPING to DELIVERED", advancedToDelivered);
+        if (advancedToDelivered > 0) {
+            log.info("Advanced {} orders from SHIPPING to DELIVERED", advancedToDelivered);
+        }
     }
 }
