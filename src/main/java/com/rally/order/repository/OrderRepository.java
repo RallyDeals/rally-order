@@ -109,6 +109,4 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
             ") THEN 1 END) " +
             "FROM Order o WHERE o.userId = :userId")
     List<Object[]> getBuyerOrdersAnalyticsRaw(UUID userId);
-
-    List<Order> findByUserId(UUID userId);
 }
