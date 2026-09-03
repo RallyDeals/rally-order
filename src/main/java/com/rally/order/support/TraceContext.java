@@ -1,9 +1,15 @@
-package com.rally.order.messaging.support;
+package com.rally.order.support;
 
 import org.slf4j.MDC;
 
 import java.util.UUID;
 
+/**
+ * Holds the per-thread correlation id in MDC so logging and tracing can
+ * stay consistent across HTTP, Kafka, and internal service calls.
+ * It is populated when a request or message enters the application and is
+ * removed again when the request/message lifecycle ends.
+ */
 public final class TraceContext {
 
     public static final String CORRELATION_ID = "correlationId";

@@ -27,8 +27,11 @@ public class ParticipantTopicConsumer implements TopicConsumer{
     @Override
     public void onMessage(ConsumerRecord<String, Object> record){
         String eventType = extractType(record);
-        if (eventType == null)
+        if (eventType == null) {
+            log.warn("Received participation message with no event type header on topic {} partition {} offset {}, skipping",
+                    record.topic(), record.partition(), record.offset());
             return;
+        }
         log.debug("Received participation event {}", eventType);
         switch(eventType){
             case EventTypes.PARTICIPANT_JOINED ->

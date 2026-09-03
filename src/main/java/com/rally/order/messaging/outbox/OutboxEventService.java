@@ -1,7 +1,8 @@
 package com.rally.order.messaging.outbox;
 
-import com.rally.order.messaging.support.TraceContext;
+import com.rally.order.support.TraceContext;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class OutboxEventService {
                 .topic(topic)
                 .payload(payload)
                 .correlationId(TraceContext.correlationId())
+                .traceId(MDC.get("traceId"))
                 .status(OutboxEventStatus.PENDING)
                 .attempts(0)
                 .createdAt(java.time.OffsetDateTime.now())
