@@ -81,8 +81,10 @@ class NormalOrderTransitionService {
     @Transactional
     Order prepareOrderForCharge(Order order, UUID userId, String paymentMethodId) {
         int updated = orderRepository.updateStatusIfCurrent(order.getId(), OrderStatus.RESERVING, OrderStatus.PENDING_CHARGE);
-        if (updated == 0)
+        if (updated == 0) {
+            log.debug("Skipped moving order {} to PENDING_CHARGE, no longer in RESERVING status", order.getId());
             return orderRepository.findById(order.getId()).orElse(order);
+        }
         order.setStatus(OrderStatus.PENDING_CHARGE);
         log.info("Order {} moved to PENDING_CHARGE, requesting payment charge", order.getId());
         outboxEventService.publish("Order", order.getId(), EventTypes.ORDER_PAYMENT_CHARGE_REQUIRED,
@@ -100,7 +102,10 @@ class NormalOrderTransitionService {
     @Transactional
     void confirmOrderForPaymentCharge(PaymentSucceeded eventPayload) {
         int updated = orderRepository.updateStatusWithPaymentIfCurrent(eventPayload.orderId(), OrderStatus.PENDING_CHARGE, OrderStatus.CONFIRMED, eventPayload.paymentId());
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped confirming order {} for payment charge, no longer in PENDING_CHARGE status", eventPayload.orderId());
+            return;
+        }
         orderRepository.initializeShippingStatusIfNull(eventPayload.orderId());
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
         log.info("Order {} confirmed after payment charge, paymentId={}", order.getId(), eventPayload.paymentId());
@@ -124,7 +129,10 @@ class NormalOrderTransitionService {
         Order order = orderRepository.getReferenceById(eventPayload.orderId());
         int updated = orderRepository.updateStatusToCancelledWithPaymentIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE,
                 CancelReason.PAYMENT_DECLINED, eventPayload.paymentId());
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped cancelling order {} for payment failure, no longer in PENDING_CHARGE status", order.getId());
+            return;
+        }
         order.setPaymentId(eventPayload.paymentId());
         order.setPaymentErrorCode(eventPayload.errorCode());
         order.setPaymentErrorMessage(eventPayload.errorMessage());
@@ -134,8 +142,10 @@ class NormalOrderTransitionService {
     @Transactional
     void cancelOrderForPaymentTimeout(Order order){
         int updated = orderRepository.updateStatusToCancelledIfCurrent(order.getId(), OrderStatus.PENDING_CHARGE, CancelReason.PAYMENT_TIMEOUT);
-        if (updated == 0)
+        if (updated == 0) {
+            log.debug("Skipped cancelling order {} for payment timeout, no longer in PENDING_CHARGE status", order.getId());
             return;
+        }
         cancelOrder(order, CancelReason.PAYMENT_TIMEOUT);
         outboxEventService.publish(
                 "Order",

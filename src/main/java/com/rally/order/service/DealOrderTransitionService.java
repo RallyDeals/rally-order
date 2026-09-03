@@ -87,6 +87,7 @@ class DealOrderTransitionService {
         if (updated == 0) {
             if (!orderRepository.existsById(eventPayload.orderId()))
                 throw new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId());
+            log.debug("Skipped cancelling order {} for failed authorization, no longer in PENDING_AUTHORIZATION status", eventPayload.orderId());
             return;
         }
         Order order = orderRepository.findById(eventPayload.orderId())
@@ -108,7 +109,10 @@ class DealOrderTransitionService {
                 OrderStatus.AUTHORIZED,
                 CancelReason.PARTICIPANT_LEFT
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped moving order {} to PENDING_VOID for participant leave, no longer in AUTHORIZED status", order.getId());
+            return;
+        }
         log.info("Order {} moved to PENDING_VOID, reason=PARTICIPANT_LEFT", order.getId());
         publishPaymentVoidRequired(order);
     }
@@ -121,7 +125,10 @@ class DealOrderTransitionService {
                 OrderStatus.AUTHORIZED,
                 eventPayload.paymentId()
         );
-        if(updated == 0) return;
+        if(updated == 0) {
+            log.debug("Skipped authorizing order {}, no longer in PENDING_AUTHORIZATION status", eventPayload.orderId());
+            return;
+        }
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );
@@ -152,7 +159,10 @@ class DealOrderTransitionService {
                 OrderStatus.AUTHORIZED,
                 CancelReason.DEAL_RESOLVED
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped moving order {} to PENDING_VOID for late authorization, no longer in AUTHORIZED status", order.getId());
+            return;
+        }
         log.info("Order {} moved to PENDING_VOID, reason=DEAL_RESOLVED", order.getId());
         dealServiceClient.releaseSlot(order.getDealId(), order.getId());
         publishPaymentVoidRequired(order);
@@ -166,7 +176,10 @@ class DealOrderTransitionService {
                 OrderStatus.CONFIRMED,
                 eventPayload.paymentId()
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped confirming order {} for payment capture, no longer in PENDING_CAPTURE status", eventPayload.orderId());
+            return;
+        }
         orderRepository.initializeShippingStatusIfNull(eventPayload.orderId());
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
@@ -195,7 +208,10 @@ class DealOrderTransitionService {
                 OrderStatus.CANCELLED,
                 eventPayload.paymentId()
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped cancelling order {} for payment void, no longer in PENDING_VOID status", eventPayload.orderId());
+            return;
+        }
         Order order = orderRepository.findById(eventPayload.orderId()).orElseThrow(
                 () -> new OrderNotFoundException("Order not found for ID: " + eventPayload.orderId())
         );
@@ -212,7 +228,10 @@ class DealOrderTransitionService {
                 OrderStatus.AUTHORIZED,
                 OrderStatus.PENDING_CAPTURE
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped moving order {} to PENDING_CAPTURE, no longer in AUTHORIZED status", order.getId());
+            return;
+        }
         log.info("Order {} moved to PENDING_CAPTURE after deal succeeded", order.getId());
         outboxEventService.publish(
                 "Order",
@@ -233,7 +252,10 @@ class DealOrderTransitionService {
                 OrderStatus.AUTHORIZED,
                 CancelReason.DEAL_FAILED
         );
-        if (updated == 0) return;
+        if (updated == 0) {
+            log.debug("Skipped moving order {} to PENDING_VOID for deal failure, no longer in AUTHORIZED status", order.getId());
+            return;
+        }
         log.info("Order {} moved to PENDING_VOID, reason=DEAL_FAILED", order.getId());
         publishPaymentVoidRequired(order);
     }
@@ -245,8 +267,10 @@ class DealOrderTransitionService {
                 OrderStatus.PENDING_AUTHORIZATION,
                 CancelReason.PAYMENT_TIMEOUT
         );
-        if (updated == 0)
+        if (updated == 0) {
+            log.debug("Skipped cancelling order {} for payment timeout, no longer in PENDING_AUTHORIZATION status", order.getId());
             return;
+        }
         log.info("Order {} cancelled, reason=PAYMENT_TIMEOUT", order.getId());
         dealServiceClient.releaseSlot(order.getDealId(), order.getId());
         publishDealOrderCancelled(order, CancelReason.PAYMENT_TIMEOUT);

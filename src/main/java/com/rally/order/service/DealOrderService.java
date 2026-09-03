@@ -52,12 +52,14 @@ public class DealOrderService  {
 
     public void handleDealSucceeded(DealSucceeded eventPayload){
         List<Order> orders = orderRepository.findOrdersByDealIdAndStatus(eventPayload.dealId(), OrderStatus.AUTHORIZED);
+        log.debug("Deal {} succeeded, moving {} authorized order(s) to capture", eventPayload.dealId(), orders.size());
         for(Order order : orders)
             dealOrderTransitionService.handleDealSucceeded(order);
     }
 
     public void handleDealFailed(DealFailed eventPayload){
         List<Order> orders = orderRepository.findOrdersByDealIdAndStatus(eventPayload.dealId(), OrderStatus.AUTHORIZED);
+        log.debug("Deal {} failed, voiding {} authorized order(s)", eventPayload.dealId(), orders.size());
         for(Order order : orders)
             dealOrderTransitionService.handleDealFailed(order);
     }

@@ -27,8 +27,11 @@ public class DealTopicConsumer implements TopicConsumer{
     @Override
     public void onMessage(ConsumerRecord<String, Object> record){
         String eventType = extractType(record);
-        if (eventType == null)
+        if (eventType == null) {
+            log.warn("Received deal message with no event type header on topic {} partition {} offset {}, skipping",
+                    record.topic(), record.partition(), record.offset());
             return;
+        }
         log.debug("Received deal event {}", eventType);
         switch(eventType){
             case EventTypes.DEAL_SUCCEEDED -> dealOrderService.handleDealSucceeded((DealSucceeded) record.value());
