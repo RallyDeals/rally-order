@@ -1,7 +1,7 @@
 package com.rally.order.config.rest;
 
 import com.rally.order.messaging.config.KafkaTopics;
-import com.rally.order.messaging.support.TraceContext;
+import com.rally.order.support.TraceContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
@@ -11,6 +11,13 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/**
+ * Propagates the current correlation id to outbound HTTP calls.
+ * It is triggered on every request sent by this service to another REST API,
+ * and it copies the existing request/message trace id into the outgoing header
+ * so the downstream service can continue the same trace instead of creating
+ * a new one.
+ */
 @Slf4j
 @Component
 public class CorrelationIdRequestInterceptor implements ClientHttpRequestInterceptor {

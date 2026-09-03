@@ -16,7 +16,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 
 @Slf4j
-@Profile("prod")
+@Profile("dev")
 @Component
 @RequiredArgsConstructor
 public class InventoryServiceClientImpl implements InventoryServiceClient {
