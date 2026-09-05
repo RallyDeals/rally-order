@@ -91,7 +91,7 @@ public class NormalOrderService {
         Map<UUID, Integer> qtyByProduct = orderItems.stream()
                 .collect(Collectors.toMap(OrderItem::getProductId, OrderItem::getQuantity));
         List<InsufficientStockException.Shortage> shortages = reserveResponse.getItems().stream()
-                .filter(i -> !i.isReserved())
+                .filter(i -> !i.getReserved())
                 .map(i -> new InsufficientStockException.Shortage(
                         i.getProductId(),
                         qtyByProduct.getOrDefault(i.getProductId(), 0),

@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
+import static java.lang.Integer.valueOf;
+
 @Profile("dev")
 @Component
 public class InventoryServiceFakeClientImpl implements InventoryServiceClient {
@@ -32,8 +34,8 @@ public class InventoryServiceFakeClientImpl implements InventoryServiceClient {
                 .items(request.getItems().stream()
                         .map(item -> InventoryReserveItem.builder()
                                 .productId(item.getProductId())
-                                .available(item.getQuantity() % 2 ==0? 0: 100)
-                                .reserved(item.getQuantity() % 2==1)
+                                .available(valueOf(item.getQuantity() % 2 ==0? 0: 100))
+                                .reserved(Boolean.valueOf(item.getQuantity() % 2==1))
                                 .build())
                         .toList())
                 .build();
