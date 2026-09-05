@@ -32,7 +32,7 @@ public class DealServiceClientImpl implements DealServiceClient {
 
     @Override
     public boolean authorizeSlot(UUID dealId, UUID orderId) {
-        String url = dealServiceUrl + "/deals/" + dealId + "/authorize-slot";
+        String url = dealServiceUrl + "/internal/deals/" + dealId + "/authorize-slot";
         HttpEntity<Void> requestEntity = requestEntity("authorize-slot", orderId);
 
         try{
@@ -49,7 +49,7 @@ public class DealServiceClientImpl implements DealServiceClient {
 
     @Override
     public void releaseSlot(UUID dealId, UUID orderId) {
-        String url = dealServiceUrl + "/deals/" + dealId + "/release-slot";
+        String url = dealServiceUrl + "/internal/deals/" + dealId + "/release-slot";
         HttpEntity<Void> requestEntity = requestEntity("release-slot", orderId);
 
         try{
@@ -65,7 +65,7 @@ public class DealServiceClientImpl implements DealServiceClient {
 
     @Override
     public void releaseAuthorizedSlot(UUID dealId, UUID orderId) {
-        String url = dealServiceUrl + "/deals/" + dealId + "/release-authorized-slot";
+        String url = dealServiceUrl + "/internal/deals/" + dealId + "/release-authorized-slot";
         HttpEntity<Void> requestEntity = requestEntity("release-authorized-slot", orderId);
 
         try{

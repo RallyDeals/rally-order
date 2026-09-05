@@ -27,7 +27,7 @@ public class InventoryServiceClientImpl implements InventoryServiceClient {
 
     @Override
     public InventoryReserveResponse reserveInventory(InventoryReserveRequest request) {
-        String url = inventoryServiceUrl + "/order-reserve";
+        String url = inventoryServiceUrl + "/inventory/order-reserve";
 
         try {
             ResponseEntity<InventoryReserveResponse> response =
