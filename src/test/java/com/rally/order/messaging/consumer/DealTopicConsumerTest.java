@@ -7,6 +7,7 @@ import com.rally.order.messaging.support.EventTypes;
 import com.rally.order.service.DealOrderService;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -14,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +30,11 @@ class DealTopicConsumerTest {
 
     @InjectMocks
     private DealTopicConsumer consumer;
+    private UUID productId;
+    @BeforeEach
+    void setup(){
+        productId = UUID.randomUUID();
+    }
 
     @Test
     void getTopic_returnsDealTopic() {
@@ -36,7 +43,7 @@ class DealTopicConsumerTest {
 
     @Test
     void onMessage_dealSucceeded_dispatchesToHandleDealSucceeded() {
-        DealSucceeded payload = new DealSucceeded(UUID.randomUUID(), 10, 5);
+        DealSucceeded payload = new DealSucceeded(Instant.now(), UUID.randomUUID(), Integer.valueOf(10), Integer.valueOf(5), productId, Integer.valueOf(5));
         ConsumerRecord<String, Object> record = record(EventTypes.DEAL_SUCCEEDED, payload);
 
         consumer.onMessage(record);
@@ -46,7 +53,7 @@ class DealTopicConsumerTest {
 
     @Test
     void onMessage_dealFailed_dispatchesToHandleDealFailed() {
-        DealFailed payload = new DealFailed(UUID.randomUUID(), 10, 5);
+        DealFailed payload = new DealFailed(Instant.now(), UUID.randomUUID(), Integer.valueOf(10), Integer.valueOf(5), productId, Integer.valueOf(5));
         ConsumerRecord<String, Object> record = record(EventTypes.DEAL_FAILED, payload);
 
         consumer.onMessage(record);
@@ -56,7 +63,7 @@ class DealTopicConsumerTest {
 
     @Test
     void onMessage_missingTypeHeader_doesNothing() {
-        ConsumerRecord<String, Object> record = new ConsumerRecord<>(KafkaTopics.DEAL, 0, 0L, "key", new DealSucceeded(UUID.randomUUID(), 1, 1));
+        ConsumerRecord<String, Object> record = new ConsumerRecord<>(KafkaTopics.DEAL, 0, 0L, "key", new DealSucceeded(Instant.now(), UUID.randomUUID(), Integer.valueOf(10), Integer.valueOf(5), productId, Integer.valueOf(5)));
 
         consumer.onMessage(record);
 
@@ -65,7 +72,7 @@ class DealTopicConsumerTest {
 
     @Test
     void onMessage_unknownEventType_doesNothing() {
-        ConsumerRecord<String, Object> record = record("Deal.SomethingElse", new DealSucceeded(UUID.randomUUID(), 1, 1));
+        ConsumerRecord<String, Object> record = record("Deal.SomethingElse", new DealSucceeded(Instant.now(), UUID.randomUUID(), Integer.valueOf(10), Integer.valueOf(5), productId, Integer.valueOf(5)));
 
         consumer.onMessage(record);
 

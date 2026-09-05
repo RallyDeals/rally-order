@@ -8,7 +8,7 @@ public final class KafkaTopics {
     // Consumed by order service
     public static final String PAYMENT = "payment.events";
     public static final String PARTICIPATION = "participation";
-    public static final String DEAL = "deal-events";
+    public static final String DEAL = "deal";
 
     // Published by order service
     public static final String ORDER_PAYMENTS = "order.payments_requested";

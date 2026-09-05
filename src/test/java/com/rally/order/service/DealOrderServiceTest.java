@@ -86,7 +86,7 @@ class DealOrderServiceTest {
 
     @Test
     void handleDealSucceeded_processesEveryAuthorizedOrderForTheDeal() {
-        DealSucceeded event = new DealSucceeded(dealId, 10, 5);
+        DealSucceeded event = new DealSucceeded(Instant.now(), dealId, Integer.valueOf(10), Integer.valueOf(5), productId, Integer.valueOf(5));
         Order order1 = Order.builder().id(UUID.randomUUID()).build();
         Order order2 = Order.builder().id(UUID.randomUUID()).build();
         when(orderRepository.findOrdersByDealIdAndStatus(dealId, OrderStatus.AUTHORIZED)).thenReturn(List.of(order1, order2));
@@ -99,7 +99,7 @@ class DealOrderServiceTest {
 
     @Test
     void handleDealFailed_processesEveryAuthorizedOrderForTheDeal() {
-        DealFailed event = new DealFailed(dealId, 10, 5);
+        DealFailed event = new DealFailed(Instant.now(), dealId, Integer.valueOf(10), Integer.valueOf(5), productId, Integer.valueOf(5));
         Order order1 = Order.builder().id(UUID.randomUUID()).build();
         when(orderRepository.findOrdersByDealIdAndStatus(dealId, OrderStatus.AUTHORIZED)).thenReturn(List.of(order1));
 
