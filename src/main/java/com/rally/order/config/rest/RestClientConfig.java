@@ -17,7 +17,7 @@ public class RestClientConfig {
     public RestTemplate restTemplate(RestTemplateBuilder restTemplateBuilder){
         return restTemplateBuilder
                 .connectTimeout(Duration.ofMillis(2000))
-                .readTimeout(Duration.ofMillis(5000))
+                .readTimeout(Duration.ofMillis(7000))
                 .additionalInterceptors(correlationIdRequestInterceptor)
                 .build();
     }
